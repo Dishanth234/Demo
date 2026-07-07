@@ -1,5 +1,7 @@
 # Stated Assumptions
 
+The scenario is fixed (200-employee SaaS on Azure + M365, public web app, PostgreSQL backend, remote workforce, one small IT team, SOC 2 in progress). Everything below is an **added assumption** — each one changes the numbers if wrong, which is exactly why they are written down.
+
 ## Company profile ("Meridian Desk", fictional)
 
 | # | Assumption | Why it matters |
