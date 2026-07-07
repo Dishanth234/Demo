@@ -58,7 +58,7 @@ All five ✅ with primary sources: Microsoft Security Blog on **Tycoon2FA** at s
 | Aggregate residual | 25.5% | **20.5%** |
 | Reduction | −40.2 pp (−61.2%) | **−36.2 pp (−63.9%)** |
 | Biggest marginal lever | R1 −11.7 pp | **R1 −14.8 pp** (even more dominant) |
-| Portfolio ROSI | 333% | **258%** (still strongly positive; EAL computed on the triangular mean, not the mode) |
+| Portfolio ROSI | 395% | **317%** (still strongly positive; EAL = E[prob]×severity, residual via product of independent means) |
 | Top-ranked risk | R3 | R3 (ranking inputs unchanged — likelihood *scores* were band-consistent with the research) |
 
 The v1.1 baseline (56.7%) also lands inside the 35–55%+ ceiling the internal red team argued for — the external research and the internal skeptic converged, which is exactly the behavior you want from two independent checks.

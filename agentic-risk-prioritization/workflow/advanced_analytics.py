@@ -185,17 +185,20 @@ def tornado(params):
 
 
 def eal_rosi(params, med):
-    # Expected annual loss uses the MEAN of each triangular, not the mode. E[X] of a
-    # right-skewed triangular exceeds its mode, so a mode-point estimate understates EAL
-    # (it did in v1 of this script by ~14% at portfolio level — quant-review catch, fixed).
+    # Expected annual loss uses the MEAN of each triangular, not the mode (E[X] of a
+    # right-skewed triangular exceeds its mode). Baseline probability and effectiveness are
+    # INDEPENDENT triangular draws, so E[residual prob] = E[baseline] * E[1 - eff] =
+    # mean_b * (1 - mean_e) -- the product of means, NOT a vertex average of the residual's
+    # low/mode/high (that pairing overstates the residual by pulling in the high-baseline /
+    # low-effectiveness tail; a 1.5M-draw Monte Carlo confirms the product-of-means value).
     rows = []
     for rid, p in params.items():
         loss = BAND_MID[round(med[rid]["primary_impact"])] + BAND_MID[round(med[rid]["secondary_impact"])]
         bl, bm, bh = p["b"]
         el, em, eh = p["e"]
         prob_base_mean = (bl + bm + bh) / 3.0
-        # residual triangular: low = bl*(1-eh), mode = bm*(1-em), high = bh*(1-el)
-        resid_mean = (bl * (1 - eh / 100) + bm * (1 - em / 100) + bh * (1 - el / 100)) / 3.0
+        eff_mean = (el + em + eh) / 3.0
+        resid_mean = prob_base_mean * (1 - eff_mean / 100)
         eal_base = prob_base_mean / 100 * loss
         eal_resid = resid_mean / 100 * loss
         cost = CASH_MID[rid] + PERSON_WEEKS[rid] * LABOR_PER_PW
@@ -210,7 +213,7 @@ def eal_rosi(params, med):
             "eal_residual_usd": sum(e["eal_residual_usd"] for e in rows),
             "eal_avoided_usd": sum(e["eal_avoided_usd"] for e in rows),
             "year1_cost_usd": sum(e["year1_cost_usd"] for e in rows)}
-    port["eal_basis"] = "EAL = E[annual prob] x E[severity]; probability = triangular mean (not mode); severity = blended impact-band midpoint (point). Portfolio EAL = sum of per-risk EAL (exact for expectations regardless of correlation)."
+    port["eal_basis"] = "EAL = E[annual prob] x severity. Baseline prob = triangular mean (bl+bm+bh)/3; residual prob = mean_b * (1 - mean_e) (product of independent means, NOT a vertex average); severity = blended impact-band midpoint (point). Portfolio EAL = sum of per-risk EAL (exact for expectations regardless of correlation)."
     port["rosi_pct"] = round((port["eal_avoided_usd"] - port["year1_cost_usd"]) / port["year1_cost_usd"] * 100)
     return {"per_risk": rows, "portfolio": port}
 

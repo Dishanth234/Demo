@@ -10,7 +10,7 @@
 > | **Top risk** | **R3** — leaked CI/CD & cloud secrets → Azure subscription compromise (composite 17.6/25; #1 across every sensitivity test) |
 > | **Biggest single lever** | **R1** — phishing-resistant MFA (moves aggregate breach likelihood most on its own, and has the strongest evidence base) |
 > | **Breach probability, 12 mo** | **56.7% → 20.5%** after all five mitigations (−36.2 pp) |
-> | **Expected annual loss** | **$2.30M → $1.01M**; portfolio **ROSI ≈ 258%** on ~$362k year-1 spend |
+> | **Expected annual loss** | **$2.30M → $0.80M**; portfolio **ROSI ≈ 317%** on ~$362k year-1 spend |
 > | **Residual vs board appetite** | still a **~21% chance of a >$2M loss year** vs a 10% illustrative appetite → **pair with cyber-insurance risk transfer** |
 >
 > Numbers are the research-calibrated **v1.1** model; every one is computed by deterministic code and traces to a cited source or a labeled expert-judgment flag.
@@ -24,7 +24,7 @@ The trustworthy things this pipeline does are usually buried in prose; here they
 | Signal | Value |
 |--------|-------|
 | Quant parameters anchored to a cited 2025–26 source | **9 of 10** (R5 effectiveness is labeled expert judgment — no literature exists) |
-| Prices verified against live vendor pages | **10 of 13** (3 corrected) |
+| Pricing SKUs checked against live vendor pages | **13 checked, 5 corrected** |
 | Arithmetic done by a model | **0** — all in deterministic code |
 | Adversarial challenges on the #1 ranking | **2** (1 upheld, 1 dissented → surfaced, not hidden) |
 | Cross-estimate red-team issues → auto-revisions | **9 → 1** (R5) |
@@ -139,9 +139,9 @@ Each package was designed by a mitigation-architect agent against the factor-lev
 
 | Risk | Primary control (named) | Owner | Adjusted effort | Annual cost (adj.) | SOC 2 |
 |------|------------------------|-------|-----------------|--------------------|-------|
-| **R3** | GitHub Actions **OIDC workload-identity federation to Entra ID** — delete all long-lived service-principal secrets; + GitHub Secret Protection (push protection, history triage), Key Vault, least-privilege RBAC, immutable backups | Head of Engineering (IT Manager co-owner) | L · ~13 pw | $15k–32k | CC6.1–6.3, 6.6, 7.1–7.2, 7.4, 8.1, A1.2 |
-| **R1** | **Phishing-resistant MFA (passkeys/FIDO2)** via Entra Conditional Access **authentication strengths**; FIDO2 keys for admins/finance; + block OAuth device-code flow & restrict app-consent (free, closes the passkey-bypass channels) | IT Manager | L · ~12 pw | $40k–58k yr-1 (Defender Suite add-on shared with R4) | CC6.1, 6.6, 7.2–7.4 |
-| **R2** | **Azure WAF** (App Gateway WAF v2 / Front Door Premium, Prevention mode) + CodeQL/Dependabot gates + least-privilege DB role and **PostgreSQL row-level security** retrofit + annual pen test | Head of Engineering (IT executes WAF/logging) | L · ~18 pw | $45k–75k yr-1 | CC6.1, 6.6, 7.1–7.2, 7.4, 8.1 |
+| **R3** | GitHub Actions **OIDC workload-identity federation to Entra ID** — delete all long-lived service-principal secrets; + GitHub Secret Protection (push protection, history triage), Key Vault, least-privilege RBAC, immutable backups | Head of Engineering (IT Manager co-owner) | L · ~13 pw | $15k–32k | CC6.1–6.3, 6.6, 7.1–7.2, 7.4, 8.1, A1.2–A1.3 |
+| **R1** | **Phishing-resistant MFA (passkeys/FIDO2)** via Entra Conditional Access **authentication strengths**; FIDO2 keys for admins/finance; + block OAuth device-code flow & restrict app-consent (free, closes the passkey-bypass channels) | IT Manager | L · ~12 pw | $40k–58k yr-1 (Defender Suite add-on shared with R4) | CC6.1, 6.6, 7.2, 7.4 |
+| **R2** | **Azure WAF** (App Gateway WAF v2 / Front Door Premium, Prevention mode) + CodeQL/Dependabot gates + least-privilege DB role and **PostgreSQL row-level security** retrofit + annual pen test | Head of Engineering (IT executes WAF/logging) | L · ~18 pw | $45k–75k yr-1 | CC6.1, 6.3, 6.6, 7.1–7.2, 7.4, 8.1 |
 | **R4** | Entra **Conditional Access compliant-device gating** (forces Intune to ~100%) + **Defender for Business EDR** with automated investigation + local-admin removal via LAPS/EPM | IT Manager (CTO signs enforcement dates) | L · ~12 pw | $12k–22k | CC6.1, 6.6, 6.8, 7.2, 7.4–7.5 |
 | **R5** | **Entra ID as the single revocation point**: Entra auth on PostgreSQL Flexible Server (kill standing local DB logins), SCIM provisioning for priority SaaS, automated leaver workflow, quarterly access reviews | IT Manager (Head of Eng co-owner for Postgres) | L · ~9 pw | $10k–30k | CC6.1–6.3, 7.2 |
 
@@ -161,7 +161,7 @@ P(≥1 breach)    = 1 − Π(1 − p_i)                       (independence assu
 standalone_i    = P_baseline − P(only mitigation i applied)   ("what does this one control buy alone")
 ```
 
-The numbers below are the **research-calibrated v1.1 model** — the headline. The pipeline's **as-run v1.0** estimates are preserved unedited in [outputs/05_quantification.json](outputs/05_quantification.json) and recomputed alongside v1.1 in [outputs/08](outputs/08_advanced_analytics.json); v1.1 supersedes v1.0 for every decision. The recalibration (which parameter changed and against which 2025–26 source) is in [SOURCES.md](SOURCES.md) — e.g. R2/R3 baselines came down (the DBIR-2026 exploitation surge is edge/VPN-driven, not custom SaaS apps; secret *exposure* is near-certain but the full chain to subscription compromise prices lower), while R1's baseline and 80% effectiveness were *confirmed* (Proofpoint: 62% of orgs suffered a successful ATO, 65% of compromised accounts had MFA on; Google's 350k-attempt security-key study).
+The numbers below are the **research-calibrated v1.1 model** — the headline. The pipeline's **as-run v1.0** estimates are preserved unedited in [outputs/05_quantification.json](outputs/05_quantification.json) and recomputed alongside v1.1 in [outputs/08](outputs/08_advanced_analytics.json); v1.1 supersedes v1.0 for every decision. (The outputs/08 recompute can differ from the as-run outputs/05 by ≤0.1 pp on an individual v1.0 marginal — pure rounding-order, e.g. R1 11.7 vs 11.8; the v1.1 headline is unaffected.) The recalibration (which parameter changed and against which 2025–26 source) is in [SOURCES.md](SOURCES.md) — e.g. R2/R3 baselines came down (the DBIR-2026 exploitation surge is edge/VPN-driven, not custom SaaS apps; secret *exposure* is near-certain but the full chain to subscription compromise prices lower), while R1's baseline and 80% effectiveness were *confirmed* (Proofpoint: 62% of orgs suffered a successful ATO, 65% of compromised accounts had MFA on; Google's 350k-attempt security-key study).
 
 **Per-risk parameters and residuals** (v1.1; annual probability of a *material* incident — IR cost > $25k or a notification duty):
 
@@ -195,13 +195,13 @@ The v1.1 baseline (56.7%) lands *inside* the ceiling the pipeline's own red team
 
 The deliberate tension the pipeline surfaces: R3 is the top-*ranked* risk (impact-driven, existential), but R1 is by far the biggest single *likelihood* lever (~4× R3 in v1.1) — so "priority" and "do first" are different questions, and the honest answer is **fund both R1 and R3 now**. (Field named `standalone_reduction`, not "marginal," on purpose — it's the first-in effect against baseline, not a last-in marginal; the ordering conclusion holds either way.)
 
-**Money — expected annual loss and ROSI** ([workflow/advanced_analytics.py](workflow/advanced_analytics.py), seeded, deterministic). EAL uses each parameter's **triangular mean** (not the mode — E[X] of a right-skewed triangular exceeds its mode; using the mode understated EAL ~14%, a quant-review catch now fixed). Loss per event = blended impact-band midpoint; year-1 cost includes internal labor at $3k/person-week:
+**Money — expected annual loss and ROSI** ([workflow/advanced_analytics.py](workflow/advanced_analytics.py), seeded, deterministic). EAL is an expectation: baseline uses each risk's **triangular-mean** probability (not the mode — E[X] of a right-skewed triangular exceeds its mode; the mode understated it ~14%), and residual uses **E[baseline]·E[1−effectiveness] = mean_b·(1−mean_e)** — the product of independent means, *not* a vertex average of the residual's low/mode/high (an earlier vertex form pulled in the high-baseline/low-effectiveness tail and overstated residual EAL; an audit re-derivation, confirmed by a 1.5M-draw Monte Carlo, caught and corrected it). Loss per event = blended impact-band midpoint; year-1 cost includes internal labor at $3k/person-week:
 
 | | Baseline EAL | Residual EAL | Year-1 cost | Portfolio ROSI |
 |--|-------------:|-------------:|------------:|---------------:|
-| v1.1 | **$2.30M** | **$1.01M** | ~$362k | **≈ 258%** |
+| v1.1 | **$2.30M** | **$0.80M** | ~$362k | **≈ 317%** |
 
-Positive for every mitigation (R3 528%, R1 330%, R4 185%, R2 180%, R5 40%). R5's thin 40% is honest — it's a SOC-2-evidence and tail-risk play, not an ROI play, and the model says so.
+Positive for every mitigation (R3 671%, R1 370%, R2 232%, R4 219%, R5 65%). R5's 65% is the thinnest — still positive, but it's a SOC-2-evidence and tail-risk play more than an ROI play, and the model says so.
 
 **Board view — loss exceedance & risk appetite.** A separate Monte Carlo over *which* risks materialize and *how large* each loss is (severity = band midpoint × a stated fat-tail multiplier) produces a loss-exceedance curve. Against an **illustrative board appetite of ≤10% annual chance of a >$2M loss year**, the program moves the probability of exceeding $2M from **52.8% → 20.8%** — a huge cut, but the residual **still breaches appetite**. That is the single most decision-useful output: five well-chosen controls are necessary but not sufficient, so the recommendation explicitly pairs them with **risk transfer** (next).
 
@@ -252,7 +252,7 @@ The as-executed script is kept untouched as the audit artifact; these v1.1 pipel
 2. **Near-tie flag in the ranking code** (adjacent composites < 0.5 apart → "treat as tied"), promoted from post-hoc analytics into the pipeline output.
 3. **TEF/VULN conditioning guard** in the scorer prompt (score TEF on *delivery attempts only*, VULN on *attempt→success only*) — the exact double-count the likelihood challenger caught.
 4. **Research-verifier stage as a standing phase** (the web-research agents from this upgrade), so parameters arrive cited instead of being flagged for later.
-5. **ATT&CK collection-technique guard** — don't map a relational-DB dump to T1213 (repos/wikis only); the critique pass caught this in the roadmap and it belongs in the mapping prompt.
+5. **ATT&CK sub-technique precision** — map a relational-DB dump to the specific **T1213.006 (Databases)**, not the parent T1213 or vague prose; a verification pass caught an earlier mis-correction here and it belongs in the mapping prompt.
 
 ## Reproducing / porting
 

@@ -1,4 +1,4 @@
-<!-- Provenance: hand-built from the pipeline's JSON artifacts (outputs/01-09); every number traces to
+<!-- Provenance: hand-built from the pipeline's JSON artifacts (outputs/01-11); every number traces to
      outputs/05_quantification.json (v1.0), outputs/08_advanced_analytics.json (v1.1 + analytics), or
      outputs/09_research_validation.json (citations). This file is an HTML *fragment by design*: it is
      published via Claude Artifacts, which wraps it in the document skeleton (doctype/head/body + CSS
@@ -99,7 +99,7 @@
   <section aria-label="Reliability scorecard">
     <div class="scorecard">
       <span class="scoreitem"><b>9/10</b> quant params cited (1 expert-judgment)</span>
-      <span class="scoreitem"><b>10/13</b> prices vendor-verified</span>
+      <span class="scoreitem"><b>13</b> pricing SKUs checked · 5 corrected</span>
       <span class="scoreitem"><b>0</b> numbers computed by a model</span>
       <span class="scoreitem"><b>2</b> adversarial challenges on #1 (1 dissent, surfaced)</span>
       <span class="scoreitem"><b>9→1</b> red-team issues → auto-revisions</span>
@@ -127,7 +127,7 @@
     <div class="kpi lever">
       <div class="label">Biggest single lever</div>
       <div class="value">R1 · −14.8 pp</div>
-      <div class="sub">Phishing-resistant MFA moves the aggregate most on its own — and has the best evidence base (Google 350k-attempt study). Best ROI is R3 (ROSI 528%); portfolio 258%.</div>
+      <div class="sub">Phishing-resistant MFA moves the aggregate most on its own — and has the best evidence base (Google 350k-attempt study). Best ROI is R3 (ROSI 671%); portfolio 317%.</div>
     </div>
   </section>
 
@@ -159,7 +159,7 @@
       <div class="mcchip">Monte Carlo (100k, independent): reduction <b>38.3 pp</b> median, P5–P95 <b>32.0–45.1</b></div>
       <div class="mcchip">Correlated variant (rank corr ≈ 0.4): residual band widens to <b>17.6–39.9%</b>, median unmoved</div>
       <div class="mcchip">P(residual ≤ 35%) = <b>93%</b></div>
-      <div class="mcchip">Portfolio EAL <b>$2.30M → $1.01M</b> · ROSI <b>258%</b> on ~$362k year-1 spend (EAL on triangular mean)</div>
+      <div class="mcchip">Portfolio EAL <b>$2.30M → $0.80M</b> · ROSI <b>317%</b> on ~$362k year-1 spend (EAL = E[prob]×severity)</div>
     </div>
     <div class="grid2">
       <div class="panel">
@@ -179,7 +179,7 @@
       </div>
       <div class="panel">
         <h3>Return on security investment (v1.1)</h3>
-        <p class="sub">ROSI = (EAL avoided − year-1 cost) / cost. R5's 40% is honest: it's a SOC 2-evidence and tail-risk play, not an ROI play.</p>
+        <p class="sub">ROSI = (EAL avoided − year-1 cost) / cost. R5's 65% is the thinnest — still positive, but it's a SOC 2-evidence and tail-risk play more than an ROI play.</p>
         <div id="rosi"></div>
       </div>
     </div>
@@ -223,7 +223,7 @@
       <div class="flag resolved"><span class="src">Resolved</span>"All parameters are model memory" → every baseline/effectiveness/price verified against DBIR 2026, GitGuardian 2026, Sophos 2025, NetDiligence 2025, Picus 2025 and live vendor pages; five parameters recalibrated (R2/R3/R5 baselines ↓, R2 effectiveness ↓, R4/R5 caps). v1.0 → v1.1 documented row-by-row.</div>
       <div class="flag resolved"><span class="src">Resolved</span>Red team's "≈65% joint baseline is too high" → v1.1 lands at 56.7%, inside the ceiling the red team argued for. External research and the internal skeptic converged independently.</div>
       <div class="flag resolved"><span class="src">Resolved</span>Challenger dissent on #1 → two-sided sensitivity sweep shows R3 stays #1 for every impact weight 0.30–0.70 (incl. secondary-dominant) and under mean aggregation; R1/R2 flagged as tied.</div>
-      <div class="flag resolved"><span class="src">Resolved</span>Hostile-critique pass fixes folded in: EAL now on the triangular mean not mode (was understated ~14%); ATT&amp;CK T1213 dropped for the SQL-dump chain; free R1 device-code/consent quick wins added; SOC 2 over-mappings (CC6.7, CC9.2) corrected.</div>
+      <div class="flag resolved"><span class="src">Resolved</span>Two critique + audit passes folded in: residual EAL fixed to E[prob]×severity = mean_b×(1−mean_e) — a product of independent means, not a vertex average (raised ROSI 258%→317%); database-collection step mapped to the specific ATT&amp;CK T1213.006 (Databases); baseline EAL moved off the mode; free R1 device-code/consent quick wins added; SOC 2 over-mappings (CC6.7, CC9.2) dropped and the matrix reconciled across all files.</div>
       <div class="flag"><span class="src">Open</span>Notification-duty materiality assumption underlies all five baselines — needs one conversation with counsel; research can't resolve it.</div>
       <div class="flag"><span class="src">Open</span>Correlated under-delivery: all five effectiveness values assume one 3-person team lands every package. Mitigated only by the roadmap's phased waves; watch the KRIs, not the plan.</div>
     </div>
@@ -231,7 +231,7 @@
   </section>
 
   <footer>
-    Fictional scenario ("Meridian Desk") for a risk-prioritization assessment. Pipeline: register validation → 3-lens scoring → deterministic aggregation → adversarial challenge → mitigation + feasibility → blind quant estimation → red team → revision → deterministic model → synthesis; then a 7-agent research pass producing the v1.1 calibration, and a 4-critic hostile-review pass whose fixes are folded in. This page is hand-built from the repo's JSON artifacts (outputs/01–10) — no number here exists outside those files. Prompts, schemas, orchestration code, replay harness and analytics live alongside this file in the repository.
+    Fictional scenario ("Meridian Desk") for a risk-prioritization assessment. Pipeline: register validation → 3-lens scoring → deterministic aggregation → adversarial challenge → mitigation + feasibility → blind quant estimation → red team → revision → deterministic model → synthesis; then a 7-agent research pass producing the v1.1 calibration, and a 4-critic hostile-review pass whose fixes are folded in. This page is hand-built from the repo's JSON artifacts (outputs/01–11) — no number here exists outside those files. Prompts, schemas, orchestration code, replay harness and analytics live alongside this file in the repository.
   </footer>
 </div>
 
@@ -241,23 +241,23 @@
   // ranking/scores are the pipeline run (outputs/02). marg = delta_pp_vs_baseline v1.1.
   const RISKS = [
     { id: 'R3', rank: 1, name: 'Leaked CI/CD & cloud secrets → Azure subscription compromise', L: 4.0, I: 4.4, score: 17.6, tier: 'Critical', tie: false,
-      b: [5, 11, 35], e: [45, 70, 85], r: [0.75, 3.3, 19.25], marg: 3.7, rosi: 528,
+      b: [5, 11, 35], e: [45, 70, 85], r: [0.75, 3.3, 19.25], marg: 3.7, rosi: 671,
       control: 'GitHub Actions OIDC federation to Entra ID — delete long-lived SP secrets; Secret Protection ($19/committer, no Enterprise needed), Key Vault, least-privilege RBAC, immutable backups',
       owner: 'Head of Engineering (+IT Manager)', effort: 'L · 13 pw', cost: '$15k–32k', soc2: 'CC6.1–6.3, 6.6, 7.1, 7.2*, 7.4*, 8.1, A1.2–A1.3' },
     { id: 'R1', rank: 2, name: 'AiTM phishing → M365 account takeover', L: 4.5, I: 3.4, score: 15.3, tier: 'High', tie: true,
-      b: [15, 30, 55], e: [60, 80, 92], r: [1.2, 6.0, 22], marg: 14.8, rosi: 330,
+      b: [15, 30, 55], e: [60, 80, 92], r: [1.2, 6.0, 22], marg: 14.8, rosi: 370,
       control: 'Phishing-resistant MFA (passkeys/FIDO2) via Conditional Access authentication strengths; hardware keys for admins & finance; block device-code flow + restrict OAuth consent (residual channels)',
-      owner: 'IT Manager', effort: 'L · 12 pw', cost: '$40k–58k yr-1', soc2: 'CC6.1, 6.6, 7.2*–7.4*' },
+      owner: 'IT Manager', effort: 'L · 12 pw', cost: '$40k–58k yr-1', soc2: 'CC6.1, 6.6, 7.2*, 7.4*' },
     { id: 'R2', rank: 3, name: 'Web app exploitation → PostgreSQL exfiltration', L: 4.0, I: 3.8, score: 15.2, tier: 'High', tie: true,
-      b: [8, 13, 38], e: [40, 60, 75], r: [2.0, 5.2, 22.8], marg: 3.9, rosi: 180,
+      b: [8, 13, 38], e: [40, 60, 75], r: [2.0, 5.2, 22.8], marg: 3.9, rosi: 232,
       control: 'Azure WAF (Prevention mode, tuned — stock rules ≈60% precision) + blocking CodeQL/Dependabot gates + least-privilege DB role + PostgreSQL row-level security + annual pen test',
-      owner: 'Head of Engineering (IT executes WAF)', effort: 'L · 18 pw', cost: '$45k–75k yr-1', soc2: 'CC6.1, 6.3, 6.6, 7.1, 7.2*, 8.1' },
+      owner: 'Head of Engineering (IT executes WAF)', effort: 'L · 18 pw', cost: '$45k–75k yr-1', soc2: 'CC6.1, 6.3, 6.6, 7.1, 7.2*, 7.4*, 8.1' },
     { id: 'R4', rank: 4, name: 'Ransomware via unmanaged remote endpoints', L: 3.5, I: 3.6, score: 12.6, tier: 'High', tie: false,
-      b: [8, 15, 30], e: [45, 65, 75], r: [2.0, 5.25, 16.5], marg: 5.0, rosi: 185,
+      b: [8, 15, 30], e: [45, 65, 75], r: [2.0, 5.25, 16.5], marg: 5.0, rosi: 219,
       control: 'Conditional Access compliant-device gating (Intune → ~100%) + Defender for Business EDR ($3/u verified) + local-admin removal (LAPS/EPM $3.00/u)',
       owner: 'IT Manager (CTO signs dates)', effort: 'L · 12 pw', cost: '$12k–22k', soc2: 'CC6.1, 6.6, 6.8, 7.2, 7.4–7.5 (recovery via R3 backups)' },
     { id: 'R5', rank: 5, name: 'Offboarding gaps / dormant access to production data', L: 3.5, I: 3.4, score: 11.9, tier: 'High', tie: false,
-      b: [3, 6, 18], e: [40, 57, 70], r: [0.9, 2.58, 10.8], marg: 1.6, rosi: 40,
+      b: [3, 6, 18], e: [40, 57, 70], r: [0.9, 2.58, 10.8], marg: 1.6, rosi: 65,
       control: 'Entra ID as single revocation point: Entra-only auth on PostgreSQL ($0, verified), SCIM for priority SaaS, automated leaver workflow, quarterly access reviews',
       owner: 'IT Manager (+Head of Eng)', effort: 'L · 9 pw', cost: '$10k–30k', soc2: 'CC6.1–6.3, 7.2*' },
   ];
@@ -385,10 +385,10 @@
     const sorted = RISKS.slice().sort((a, b) => b.rosi - a.rosi);
     const W = 460, rowH = 44, m = { l: 44, r: 80, t: 10, b: 30 };
     const H = m.t + m.b + sorted.length * rowH;
-    const maxV = 560;
+    const maxV = 720;
     const x = v => m.l + v / maxV * (W - m.l - m.r);
     const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Return on security investment per mitigation, v1.1' });
-    [0, 200, 400, 560].forEach(v => {
+    [0, 240, 480, 720].forEach(v => {
       svg.appendChild(svgEl('line', { x1: x(v), y1: m.t, x2: x(v), y2: H - m.b, stroke: C.line, 'stroke-width': 1 }));
       svg.appendChild(svgEl('text', { x: x(v), y: H - m.b + 18, 'text-anchor': 'middle', fill: C.faint, style: `font:${font}` }, v + '%'));
     });
