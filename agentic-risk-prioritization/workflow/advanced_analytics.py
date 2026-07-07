@@ -185,11 +185,19 @@ def tornado(params):
 
 
 def eal_rosi(params, med):
+    # Expected annual loss uses the MEAN of each triangular, not the mode. E[X] of a
+    # right-skewed triangular exceeds its mode, so a mode-point estimate understates EAL
+    # (it did in v1 of this script by ~14% at portfolio level — quant-review catch, fixed).
     rows = []
     for rid, p in params.items():
         loss = BAND_MID[round(med[rid]["primary_impact"])] + BAND_MID[round(med[rid]["secondary_impact"])]
-        eal_base = p["b"][1] / 100 * loss
-        eal_resid = p["b"][1] * (1 - p["e"][1] / 100) / 100 * loss
+        bl, bm, bh = p["b"]
+        el, em, eh = p["e"]
+        prob_base_mean = (bl + bm + bh) / 3.0
+        # residual triangular: low = bl*(1-eh), mode = bm*(1-em), high = bh*(1-el)
+        resid_mean = (bl * (1 - eh / 100) + bm * (1 - em / 100) + bh * (1 - el / 100)) / 3.0
+        eal_base = prob_base_mean / 100 * loss
+        eal_resid = resid_mean / 100 * loss
         cost = CASH_MID[rid] + PERSON_WEEKS[rid] * LABOR_PER_PW
         avoided = eal_base - eal_resid
         rows.append({"risk_id": rid, "loss_per_event_usd": loss,
@@ -202,8 +210,51 @@ def eal_rosi(params, med):
             "eal_residual_usd": sum(e["eal_residual_usd"] for e in rows),
             "eal_avoided_usd": sum(e["eal_avoided_usd"] for e in rows),
             "year1_cost_usd": sum(e["year1_cost_usd"] for e in rows)}
+    port["eal_basis"] = "EAL = E[annual prob] x E[severity]; probability = triangular mean (not mode); severity = blended impact-band midpoint (point). Portfolio EAL = sum of per-risk EAL (exact for expectations regardless of correlation)."
     port["rosi_pct"] = round((port["eal_avoided_usd"] - port["year1_cost_usd"]) / port["year1_cost_usd"] * 100)
     return {"per_risk": rows, "portfolio": port}
+
+
+def loss_exceedance(params, med, rng):
+    # Board-grade loss-exceedance curve (LEC): a Monte Carlo over WHICH risks materialize in a
+    # year and how large each loss is. Occurrence ~ Bernoulli(annual prob, sampled per iteration
+    # from the risk's baseline/residual triangular). Severity ~ blended band-midpoint x a stated
+    # triangular multiplier (0.5, 1.0, 2.5) capturing the fat right tail the breach-cost research
+    # documents (NetDiligence: typical loss modest, tail into the millions). Curve = P(annual
+    # loss > threshold), baseline vs residual. This drives the risk-appetite check ONLY; the EAL
+    # point estimate above uses expected severity (multiplier mean ~1.33 is NOT applied there, so
+    # EAL stays conservative and the two views are labeled distinctly).
+    items = [(rid, p, BAND_MID[round(med[rid]["primary_impact"])] + BAND_MID[round(med[rid]["secondary_impact"])])
+             for rid, p in params.items()]
+    thresholds = [100_000, 250_000, 500_000, 1_000_000, 2_000_000, 5_000_000]
+    out = {}
+    for variant, use_resid in (("baseline", False), ("residual", True)):
+        losses = []
+        for _ in range(N):
+            total = 0.0
+            for rid, p, sev_mid in items:
+                bl, bm, bh = p["b"]
+                el, em, eh = p["e"]
+                prob = tri_inv(rng.random(), bl, bm, bh)
+                if use_resid:
+                    eff = tri_inv(rng.random(), el, em, eh)
+                    prob = prob * (1 - eff / 100)
+                if rng.random() < prob / 100:
+                    total += sev_mid * tri_inv(rng.random(), 0.5, 1.0, 2.5)
+            losses.append(total)
+        out[variant] = {
+            "mean_usd": round(statistics.fmean(losses)),
+            "p50_usd": round(pct(losses, 0.50)), "p90_usd": round(pct(losses, 0.90)),
+            "p95_usd": round(pct(losses, 0.95)), "p99_usd": round(pct(losses, 0.99)),
+            "exceedance": {f"gt_{t}": round(sum(1 for x in losses if x > t) / N * 100, 1) for t in thresholds},
+        }
+    appetite = {"statement": "Illustrative board risk appetite: <=10% annual probability of a loss event exceeding $2,000,000.",
+                "threshold_usd": 2_000_000, "max_tolerated_prob_pct": 10.0,
+                "baseline_prob_gt_threshold_pct": out["baseline"]["exceedance"]["gt_2000000"],
+                "residual_prob_gt_threshold_pct": out["residual"]["exceedance"]["gt_2000000"]}
+    appetite["baseline_within_appetite"] = appetite["baseline_prob_gt_threshold_pct"] <= appetite["max_tolerated_prob_pct"]
+    appetite["residual_within_appetite"] = appetite["residual_prob_gt_threshold_pct"] <= appetite["max_tolerated_prob_pct"]
+    return {"thresholds_usd": thresholds, "curves": out, "risk_appetite": appetite}
 
 
 def framework_sensitivity(scoring):
@@ -217,11 +268,13 @@ def framework_sensitivity(scoring):
         return order, comp
 
     sweep = []
-    for w in (0.50, 0.55, 0.60, 0.65, 0.70):
+    for w in (0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70):
         order, comp = rank_at(w)
         sweep.append({"primary_weight": w, "ranking": order,
                       "composites": {r: comp[r] for r in order}})
     top_stable = len({s["ranking"][0] for s in sweep}) == 1
+    top_at_secondary_dominant = sorted(
+        {s["ranking"][0] for s in sweep if s["primary_weight"] <= 0.40})
 
     # mean-vs-median lens aggregation
     per_lens = {}
@@ -249,6 +302,8 @@ def framework_sensitivity(scoring):
     return {
         "impact_weight_sweep": sweep,
         "top_risk_stable_across_sweep": top_stable,
+        "sweep_range": "primary impact weight 0.30 (secondary-dominant) to 0.70 (primary-dominant)",
+        "top_risk_at_secondary_dominant_weights": top_at_secondary_dominant,
         "mean_aggregation_ranking": mean_order,
         "mean_aggregation_composites": mean_comp,
         "top_risk_stable_mean_vs_median": mean_order[0] == shipped[0]["risk_id"],
@@ -270,15 +325,16 @@ def main():
             "note": "as produced by the agent pipeline (post internal red-team)",
         }
 
-    rng = random.Random(SEED)
     versions = {}
     for name, params in (("v1.0_pipeline", v10), ("v1.1_research_calibrated", V11)):
+        rng = random.Random(SEED)  # reseed per version so each model's MC is independent & reproducible
         versions[name] = {
             "parameter_notes": {rid: p["note"] for rid, p in params.items()},
             "deterministic": deterministic_model(params),
             "monte_carlo": monte_carlo(params, rng),
             "tornado_on_aggregate_residual": tornado(params),
             "eal_rosi": eal_rosi(params, med),
+            "loss_exceedance": loss_exceedance(params, med, rng),
         }
 
     out = {
@@ -291,7 +347,8 @@ def main():
             "loss_per_event": "midpoint(primary impact median) + midpoint(secondary impact median)",
             "labor_cost_per_person_week_usd": LABOR_PER_PW,
             "year1_cost": "cash midpoint of feasibility-adjusted range + person-weeks x labor rate",
-            "rosi": "(EAL avoided - year-1 cost) / year-1 cost; point estimates on mode values",
+            "rosi": "(EAL avoided - year-1 cost) / year-1 cost; EAL on triangular MEAN probability x expected severity (v1 used mode, understating EAL ~14% -- fixed)",
+            "loss_exceedance": "separate MC over risk occurrence x severity; severity = band midpoint x triangular(0.5, 1.0, 2.5) tail multiplier; drives the risk-appetite check only, not the EAL point",
         },
         "versions": versions,
         "framework_sensitivity": framework_sensitivity(scoring),
@@ -309,11 +366,14 @@ def main():
         print(f" MC indep reduction p5/p50/p95: {mc['independent']['reduction_pp']['p5']}/{mc['independent']['reduction_pp']['p50']}/{mc['independent']['reduction_pp']['p95']}pp")
         print(f" MC corr  residual p5/p50/p95: {mc['correlated']['residual_agg_pct']['p5']}/{mc['correlated']['residual_agg_pct']['p50']}/{mc['correlated']['residual_agg_pct']['p95']}%")
         print(f" tornado top3: {[(t['param'], t['swing_pp']) for t in v['tornado_on_aggregate_residual']['params'][:3]]}")
-        print(f" ROSI: {[(e['risk_id'], e['rosi_pct']) for e in v['eal_rosi']['per_risk']]} portfolio {v['eal_rosi']['portfolio']['rosi_pct']}%")
+        pf = v['eal_rosi']['portfolio']
+        print(f" EAL: ${pf['eal_baseline_usd']:,} -> ${pf['eal_residual_usd']:,} | ROSI {pf['rosi_pct']}% | per-risk {[(e['risk_id'], e['rosi_pct']) for e in v['eal_rosi']['per_risk']]}")
+        ap = v['loss_exceedance']['risk_appetite']
+        print(f" LEC P(loss>$2M): baseline {ap['baseline_prob_gt_threshold_pct']}% -> residual {ap['residual_prob_gt_threshold_pct']}% (appetite <=10%: base {'OK' if ap['baseline_within_appetite'] else 'BREACH'}, resid {'OK' if ap['residual_within_appetite'] else 'BREACH'})")
 
     fs = out["framework_sensitivity"]
-    print(f"\n framework: top stable across weight sweep: {fs['top_risk_stable_across_sweep']}; mean-vs-median stable: {fs['top_risk_stable_mean_vs_median']}; near-ties: {fs['near_ties']}")
-    print(f" weight sweep rankings: {[(s['primary_weight'], '>'.join(s['ranking'])) for s in fs['impact_weight_sweep']]}")
+    print(f"\n framework: top stable across full sweep (0.30-0.70): {fs['top_risk_stable_across_sweep']}; top at secondary-dominant (<=0.40): {fs['top_risk_at_secondary_dominant_weights']}; mean-vs-median stable: {fs['top_risk_stable_mean_vs_median']}; near-ties: {fs['near_ties']}")
+    print(f" weight sweep: {[(s['primary_weight'], '>'.join(s['ranking'])) for s in fs['impact_weight_sweep']]}")
 
 
 if __name__ == "__main__":

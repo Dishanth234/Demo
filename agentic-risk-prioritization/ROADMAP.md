@@ -52,15 +52,15 @@ Each KRI is measurable from tooling the company will own after the mitigations l
 
 ## MITRE ATT&CK mapping
 
-All 22 technique IDs verified against live attack.mitre.org pages (Enterprise **v19.1**, pages last modified 2026-05-12; none deprecated) by the research pass — raw findings in [outputs/09_research_validation.json](outputs/09_research_validation.json). Useful for detection engineering later: each KRI above watches a stage of one of these chains.
+Technique IDs verified against live attack.mitre.org pages (Enterprise **v19.1**, pages last modified 2026-05-12; none deprecated) — raw findings in [outputs/09_research_validation.json](outputs/09_research_validation.json). One correction applied after a second expert pass: the research agent had mapped the R2/R5 database dump to **T1213 (Data from Information Repositories)**, but MITRE scopes T1213 to SharePoint/Confluence/wikis/code repos — *not* a backend relational database. ATT&CK has no precise "dump a SQL database" Collection technique, so those rows now name the in-chain app-layer access instead and say so. R3's **T1213.003 (Code Repositories)** is a correct fit and stays. Each KRI above watches a stage of one of these chains.
 
 | Risk | Kill chain (ATT&CK Enterprise v19.1) |
 |------|--------------------------------------|
 | R1 | [T1566.002](https://attack.mitre.org/techniques/T1566/002/) Spearphishing Link → [T1557](https://attack.mitre.org/techniques/T1557/) Adversary-in-the-Middle → [T1539](https://attack.mitre.org/techniques/T1539/) Steal Web Session Cookie → [T1550.004](https://attack.mitre.org/techniques/T1550/004/) Use Alternate Auth Material: Web Session Cookie → [T1078.004](https://attack.mitre.org/techniques/T1078/004/) Valid Accounts: Cloud |
-| R2 | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application → [T1505.003](https://attack.mitre.org/techniques/T1505/003/) Web Shell → [T1213](https://attack.mitre.org/techniques/T1213/) Data from Information Repositories → [T1048.002](https://attack.mitre.org/techniques/T1048/002/) Exfiltration Over Encrypted Non-C2 Protocol |
+| R2 | [T1190](https://attack.mitre.org/techniques/T1190/) Exploit Public-Facing Application → [T1505.003](https://attack.mitre.org/techniques/T1505/003/) Web Shell → *collection via the app's own DB access (no precise ATT&CK Collection ID for a SQL dump)* → [T1048.002](https://attack.mitre.org/techniques/T1048/002/) Exfiltration Over Encrypted Non-C2 Protocol |
 | R3 | [T1552.001](https://attack.mitre.org/techniques/T1552/001/) Credentials In Files + [T1213.003](https://attack.mitre.org/techniques/T1213/003/) Code Repositories → [T1078.004](https://attack.mitre.org/techniques/T1078/004/) Valid Accounts: Cloud → [T1098.001](https://attack.mitre.org/techniques/T1098/001/) Additional Cloud Credentials (persistence) → [T1530](https://attack.mitre.org/techniques/T1530/) Data from Cloud Storage |
 | R4 | [T1204.002](https://attack.mitre.org/techniques/T1204/002/) User Execution: Malicious File → [T1548.002](https://attack.mitre.org/techniques/T1548/002/) Bypass UAC → [T1555.003](https://attack.mitre.org/techniques/T1555/003/) Credentials from Web Browsers + [T1528](https://attack.mitre.org/techniques/T1528/) Steal Application Access Token → [T1486](https://attack.mitre.org/techniques/T1486/) Data Encrypted for Impact |
-| R5 | [T1078.004](https://attack.mitre.org/techniques/T1078/004/) Valid Accounts: Cloud + [T1133](https://attack.mitre.org/techniques/T1133/) External Remote Services (direct Postgres logins) → [T1213](https://attack.mitre.org/techniques/T1213/) Data from Information Repositories → [T1048.002](https://attack.mitre.org/techniques/T1048/002/) Exfiltration Over Encrypted Non-C2 Protocol |
+| R5 | [T1078.004](https://attack.mitre.org/techniques/T1078/004/) Valid Accounts: Cloud + [T1133](https://attack.mitre.org/techniques/T1133/) External Remote Services (direct Postgres logins) → *collection via the dormant account's own DB access* → [T1048.002](https://attack.mitre.org/techniques/T1048/002/) Exfiltration Over Encrypted Non-C2 Protocol |
 
 ## SOC 2 evidence matrix
 
@@ -83,3 +83,22 @@ The mitigation agents' CC mappings were **audited against the AICPA TSC text** (
 | A1.3 recovery-plan **testing** | | | ✔ *(added — claiming backups without restore testing is a classic Type I gap)* | | | documented restore-test results |
 
 Net effect of the audit: two criteria dropped, two added, and one honest condition made explicit — the CC7.x rows only hold if the monitoring/IR runbook work (already in the KRI table and Wave 1) actually ships. Auditors respect trimmed claims more than padded ones.
+
+> **Note on source artifacts:** the raw per-mitigation `soc2_criteria` arrays in [outputs/04_mitigations.json](outputs/04_mitigations.json) hold the mitigation agents' **pre-audit** mappings (still listing R1→CC6.7 and R5→CC9.2). This matrix is the authoritative post-audit set; the JSON is preserved unedited as the as-run agent output so the correction is visible rather than silently overwritten.
+
+## Free identity quick wins the research pass flagged (R1)
+
+The R1 mitigation centers on phishing-resistant MFA, but the research pass ([SOURCES.md](SOURCES.md), [outputs/09](outputs/09_research_validation.json)) noted that passkeys are bypassable via two channels that don't touch the authentication method — so both of these **$0, E3-native** Conditional Access changes ship inside the R1 package as day-one quick wins:
+
+1. **Block the OAuth 2.0 device-code authorization-grant flow** via a Conditional Access policy — closes the Storm-2372 device-code phishing path that harvests tokens without ever prompting for the passkey.
+2. **Restrict user app-consent** to verified publishers / low-impact permissions with an admin-consent request workflow — closes illicit-consent-grant phishing, where a user is tricked into authorizing a malicious app instead of entering credentials.
+
+Neither costs a license; both are policy toggles in Entra, and both produce CC6.6 / CC7.2 evidence.
+
+## Coverage gap on the watchlist: third-party / vendor breach (R6 candidate)
+
+The validator's coverage-gap list and the dropped **CC9.2** (vendor/business-partner risk) point at the same untracked exposure: Meridian Desk resells through ~15 downstream SSO/SaaS apps, any of which could be breached and expose customer data with no entry in the top-5 register. Rather than dilute the tight 5-risk analysis by force-fitting a 6th, it goes on the watchlist as **R6-candidate (third-party risk management)** with one starter KRI so it is *tracked*, not forgotten:
+
+| KRI | Source | Target | Owner |
+|-----|--------|--------|-------|
+| % of the ~15 SSO-connected vendors with a current SOC 2 (or ISO 27001) report on file | vendor register / security questionnaire responses | ≥ 90% before Type II window | IT Manager |

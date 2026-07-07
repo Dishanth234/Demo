@@ -14,7 +14,8 @@
     "loss_per_event": "midpoint(primary impact median) + midpoint(secondary impact median)",
     "labor_cost_per_person_week_usd": 3000,
     "year1_cost": "cash midpoint of feasibility-adjusted range + person-weeks x labor rate",
-    "rosi": "(EAL avoided - year-1 cost) / year-1 cost; point estimates on mode values"
+    "rosi": "(EAL avoided - year-1 cost) / year-1 cost; EAL on triangular MEAN probability x expected severity (v1 used mode, understating EAL ~14% -- fixed)",
+    "loss_exceedance": "separate MC over risk occurrence x severity; severity = band midpoint x triangular(0.5, 1.0, 2.5) tail multiplier; drives the risk-appetite check only, not the EAL point"
   },
   "versions": {
     "v1.0_pipeline": {
@@ -285,60 +286,112 @@
           {
             "risk_id": "R3",
             "loss_per_event_usd": 4250000,
-            "eal_baseline_usd": 850000,
-            "eal_residual_usd": 255000,
-            "eal_avoided_usd": 595000,
+            "eal_baseline_usd": 963333,
+            "eal_residual_usd": 413667,
+            "eal_avoided_usd": 549667,
             "year1_cost_usd": 62500,
-            "rosi_pct": 852,
-            "payback_ratio": 9.5
+            "rosi_pct": 779,
+            "payback_ratio": 8.8
           },
           {
             "risk_id": "R1",
             "loss_per_event_usd": 1550000,
-            "eal_baseline_usd": 465000,
-            "eal_residual_usd": 93000,
-            "eal_avoided_usd": 372000,
+            "eal_baseline_usd": 516667,
+            "eal_residual_usd": 150867,
+            "eal_avoided_usd": 365800,
             "year1_cost_usd": 85000,
-            "rosi_pct": 338,
-            "payback_ratio": 4.4
+            "rosi_pct": 330,
+            "payback_ratio": 4.3
           },
           {
             "risk_id": "R2",
             "loss_per_event_usd": 3300000,
-            "eal_baseline_usd": 660000,
-            "eal_residual_usd": 231000,
-            "eal_avoided_usd": 429000,
+            "eal_baseline_usd": 748000,
+            "eal_residual_usd": 336600,
+            "eal_avoided_usd": 411400,
             "year1_cost_usd": 114000,
-            "rosi_pct": 276,
-            "payback_ratio": 3.8
+            "rosi_pct": 261,
+            "payback_ratio": 3.6
           },
           {
             "risk_id": "R4",
             "loss_per_event_usd": 1550000,
-            "eal_baseline_usd": 232500,
-            "eal_residual_usd": 81375,
-            "eal_avoided_usd": 151125,
+            "eal_baseline_usd": 273833,
+            "eal_residual_usd": 120642,
+            "eal_avoided_usd": 153192,
             "year1_cost_usd": 53000,
-            "rosi_pct": 185,
+            "rosi_pct": 189,
             "payback_ratio": 2.9
           },
           {
             "risk_id": "R5",
             "loss_per_event_usd": 1550000,
-            "eal_baseline_usd": 155000,
-            "eal_residual_usd": 66650,
-            "eal_avoided_usd": 88350,
+            "eal_baseline_usd": 180833,
+            "eal_residual_usd": 94757,
+            "eal_avoided_usd": 86077,
             "year1_cost_usd": 47000,
-            "rosi_pct": 88,
-            "payback_ratio": 1.9
+            "rosi_pct": 83,
+            "payback_ratio": 1.8
           }
         ],
         "portfolio": {
-          "eal_baseline_usd": 2362500,
-          "eal_residual_usd": 727025,
-          "eal_avoided_usd": 1635475,
+          "eal_baseline_usd": 2682666,
+          "eal_residual_usd": 1116533,
+          "eal_avoided_usd": 1566136,
           "year1_cost_usd": 361500,
-          "rosi_pct": 352
+          "eal_basis": "EAL = E[annual prob] x E[severity]; probability = triangular mean (not mode); severity = blended impact-band midpoint (point). Portfolio EAL = sum of per-risk EAL (exact for expectations regardless of correlation).",
+          "rosi_pct": 333
+        }
+      },
+      "loss_exceedance": {
+        "thresholds_usd": [
+          100000,
+          250000,
+          500000,
+          1000000,
+          2000000,
+          5000000
+        ],
+        "curves": {
+          "baseline": {
+            "mean_usd": 3572529,
+            "p50_usd": 2671053,
+            "p90_usd": 8652844,
+            "p95_usd": 10388159,
+            "p99_usd": 13890069,
+            "exceedance": {
+              "gt_100000": 70.9,
+              "gt_250000": 70.9,
+              "gt_500000": 70.9,
+              "gt_1000000": 70.4,
+              "gt_2000000": 58.2,
+              "gt_5000000": 30.5
+            }
+          },
+          "residual": {
+            "mean_usd": 1174738,
+            "p50_usd": 0,
+            "p90_usd": 4484228,
+            "p95_usd": 6191739,
+            "p99_usd": 9186630,
+            "exceedance": {
+              "gt_100000": 30.3,
+              "gt_250000": 30.3,
+              "gt_500000": 30.3,
+              "gt_1000000": 30.0,
+              "gt_2000000": 23.0,
+              "gt_5000000": 8.3
+            }
+          }
+        },
+        "risk_appetite": {
+          "statement": "Illustrative board risk appetite: <=10% annual probability of a loss event exceeding $2,000,000.",
+          "threshold_usd": 2000000,
+          "max_tolerated_prob_pct": 10.0,
+          "baseline_prob_gt_threshold_pct": 58.2,
+          "residual_prob_gt_threshold_pct": 23.0,
+          "baseline_within_appetite": false,
+          "residual_within_appetite": false
         }
       }
     },
@@ -486,58 +539,58 @@
         "independent": {
           "baseline_agg_pct": {
             "mean": 66.7,
-            "p5": 56.5,
+            "p5": 56.4,
             "p25": 62.6,
             "p50": 66.9,
             "p75": 71.0,
-            "p95": 76.3
+            "p95": 76.2
           },
           "residual_agg_pct": {
             "mean": 28.3,
             "p5": 21.5,
             "p25": 25.3,
             "p50": 28.2,
-            "p75": 31.3,
+            "p75": 31.2,
             "p95": 35.8
           },
           "reduction_pp": {
-            "mean": 38.3,
+            "mean": 38.4,
             "p5": 32.0,
             "p25": 35.6,
-            "p50": 38.2,
+            "p50": 38.3,
             "p75": 41.0,
             "p95": 45.1
           },
-          "prob_reduction_ge_30pp": 98.7,
-          "prob_residual_le_35pct": 93.0
+          "prob_reduction_ge_30pp": 98.8,
+          "prob_residual_le_35pct": 93.2
         },
         "correlated": {
           "baseline_agg_pct": {
-            "mean": 66.0,
-            "p5": 49.7,
-            "p25": 60.7,
+            "mean": 65.9,
+            "p5": 49.4,
+            "p25": 60.6,
             "p50": 66.5,
-            "p75": 71.9,
+            "p75": 71.8,
             "p95": 80.5
           },
           "residual_agg_pct": {
-            "mean": 28.2,
-            "p5": 17.7,
-            "p25": 23.7,
-            "p50": 27.8,
+            "mean": 28.1,
+            "p5": 17.6,
+            "p25": 23.6,
+            "p50": 27.7,
             "p75": 32.2,
             "p95": 39.9
           },
           "reduction_pp": {
-            "mean": 37.9,
-            "p5": 28.7,
+            "mean": 37.8,
+            "p5": 28.5,
             "p25": 34.3,
             "p50": 37.9,
-            "p75": 41.5,
-            "p95": 46.7
+            "p75": 41.4,
+            "p95": 46.6
           },
-          "prob_reduction_ge_30pp": 92.2,
-          "prob_residual_le_35pct": 85.5
+          "prob_reduction_ge_30pp": 91.9,
+          "prob_residual_le_35pct": 85.6
         }
       },
       "tornado_on_aggregate_residual": {
@@ -610,28 +663,28 @@
           {
             "risk_id": "R3",
             "loss_per_event_usd": 4250000,
-            "eal_baseline_usd": 467500,
-            "eal_residual_usd": 140250,
-            "eal_avoided_usd": 327250,
+            "eal_baseline_usd": 722500,
+            "eal_residual_usd": 330083,
+            "eal_avoided_usd": 392417,
             "year1_cost_usd": 62500,
-            "rosi_pct": 424,
-            "payback_ratio": 5.2
+            "rosi_pct": 528,
+            "payback_ratio": 6.3
           },
           {
             "risk_id": "R1",
             "loss_per_event_usd": 1550000,
-            "eal_baseline_usd": 465000,
-            "eal_residual_usd": 93000,
-            "eal_avoided_usd": 372000,
+            "eal_baseline_usd": 516667,
+            "eal_residual_usd": 150867,
+            "eal_avoided_usd": 365800,
             "year1_cost_usd": 85000,
-            "rosi_pct": 338,
-            "payback_ratio": 4.4
+            "rosi_pct": 330,
+            "payback_ratio": 4.3
           },
           {
             "risk_id": "R4",
             "loss_per_event_usd": 1550000,
-            "eal_baseline_usd": 232500,
-            "eal_residual_usd": 81375,
+            "eal_baseline_usd": 273833,
+            "eal_residual_usd": 122708,
             "eal_avoided_usd": 151125,
             "year1_cost_usd": 53000,
             "rosi_pct": 185,
@@ -640,36 +693,156 @@
           {
             "risk_id": "R2",
             "loss_per_event_usd": 3300000,
-            "eal_baseline_usd": 429000,
-            "eal_residual_usd": 171600,
-            "eal_avoided_usd": 257400,
+            "eal_baseline_usd": 649000,
+            "eal_residual_usd": 330000,
+            "eal_avoided_usd": 319000,
             "year1_cost_usd": 114000,
-            "rosi_pct": 126,
-            "payback_ratio": 2.3
+            "rosi_pct": 180,
+            "payback_ratio": 2.8
           },
           {
             "risk_id": "R5",
             "loss_per_event_usd": 1550000,
-            "eal_baseline_usd": 93000,
-            "eal_residual_usd": 39990,
-            "eal_avoided_usd": 53010,
+            "eal_baseline_usd": 139500,
+            "eal_residual_usd": 73780,
+            "eal_avoided_usd": 65720,
             "year1_cost_usd": 47000,
-            "rosi_pct": 13,
-            "payback_ratio": 1.1
+            "rosi_pct": 40,
+            "payback_ratio": 1.4
           }
         ],
         "portfolio": {
-          "eal_baseline_usd": 1687000,
-          "eal_residual_usd": 526215,
-          "eal_avoided_usd": 1160785,
+          "eal_baseline_usd": 2301500,
+          "eal_residual_usd": 1007438,
+          "eal_avoided_usd": 1294062,
           "year1_cost_usd": 361500,
-          "rosi_pct": 221
+          "eal_basis": "EAL = E[annual prob] x E[severity]; probability = triangular mean (not mode); severity = blended impact-band midpoint (point). Portfolio EAL = sum of per-risk EAL (exact for expectations regardless of correlation).",
+          "rosi_pct": 258
+        }
+      },
+      "loss_exceedance": {
+        "thresholds_usd": [
+          100000,
+          250000,
+          500000,
+          1000000,
+          2000000,
+          5000000
+        ],
+        "curves": {
+          "baseline": {
+            "mean_usd": 3070032,
+            "p50_usd": 2195797,
+            "p90_usd": 7825493,
+            "p95_usd": 9574709,
+            "p99_usd": 13032872,
+            "exceedance": {
+              "gt_100000": 66.7,
+              "gt_250000": 66.7,
+              "gt_500000": 66.7,
+              "gt_1000000": 66.1,
+              "gt_2000000": 52.8,
+              "gt_5000000": 24.8
+            }
+          },
+          "residual": {
+            "mean_usd": 1042853,
+            "p50_usd": 0,
+            "p90_usd": 3973108,
+            "p95_usd": 5809386,
+            "p99_usd": 8754529,
+            "exceedance": {
+              "gt_100000": 28.1,
+              "gt_250000": 28.1,
+              "gt_500000": 28.1,
+              "gt_1000000": 27.8,
+              "gt_2000000": 20.8,
+              "gt_5000000": 7.0
+            }
+          }
+        },
+        "risk_appetite": {
+          "statement": "Illustrative board risk appetite: <=10% annual probability of a loss event exceeding $2,000,000.",
+          "threshold_usd": 2000000,
+          "max_tolerated_prob_pct": 10.0,
+          "baseline_prob_gt_threshold_pct": 52.8,
+          "residual_prob_gt_threshold_pct": 20.8,
+          "baseline_within_appetite": false,
+          "residual_within_appetite": false
         }
       }
     }
   },
   "framework_sensitivity": {
     "impact_weight_sweep": [
+      {
+        "primary_weight": 0.3,
+        "ranking": [
+          "R3",
+          "R2",
+          "R1",
+          "R5",
+          "R4"
+        ],
+        "composites": {
+          "R3": 18.8,
+          "R2": 17.6,
+          "R1": 16.65,
+          "R5": 12.95,
+          "R4": 11.55
+        }
+      },
+      {
+        "primary_weight": 0.35,
+        "ranking": [
+          "R3",
+          "R2",
+          "R1",
+          "R5",
+          "R4"
+        ],
+        "composites": {
+          "R3": 18.6,
+          "R2": 17.2,
+          "R1": 16.43,
+          "R5": 12.78,
+          "R4": 11.72
+        }
+      },
+      {
+        "primary_weight": 0.4,
+        "ranking": [
+          "R3",
+          "R2",
+          "R1",
+          "R5",
+          "R4"
+        ],
+        "composites": {
+          "R3": 18.4,
+          "R2": 16.8,
+          "R1": 16.2,
+          "R5": 12.6,
+          "R4": 11.9
+        }
+      },
+      {
+        "primary_weight": 0.45,
+        "ranking": [
+          "R3",
+          "R2",
+          "R1",
+          "R5",
+          "R4"
+        ],
+        "composites": {
+          "R3": 18.2,
+          "R2": 16.4,
+          "R1": 15.98,
+          "R5": 12.43,
+          "R4": 12.08
+        }
+      },
       {
         "primary_weight": 0.5,
         "ranking": [
@@ -757,6 +930,10 @@
       }
     ],
     "top_risk_stable_across_sweep": true,
+    "sweep_range": "primary impact weight 0.30 (secondary-dominant) to 0.70 (primary-dominant)",
+    "top_risk_at_secondary_dominant_weights": [
+      "R3"
+    ],
     "mean_aggregation_ranking": [
       "R3",
       "R2",
