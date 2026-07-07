@@ -1,0 +1,186 @@
+{
+  "_comment": "JSON Schemas passed to each agent via the orchestrator's `schema` option. The harness forces the agent to return output through a StructuredOutput tool call validated against the schema (with automatic retry on mismatch), so downstream code never parses free text. These are the pipeline's 'tool definitions'.",
+
+  "REGISTER_SCHEMA": {
+    "used_by": "01 Risk Register Validator",
+    "type": "object",
+    "required": ["risks", "validation_notes", "coverage_gaps"],
+    "properties": {
+      "risks": {
+        "type": "array", "minItems": 5, "maxItems": 5,
+        "items": {
+          "type": "object",
+          "required": ["id", "title", "threat_source", "asset", "exposure", "scenario"],
+          "properties": {
+            "id": { "type": "string" }, "title": { "type": "string" },
+            "threat_source": { "type": "string" }, "asset": { "type": "string" },
+            "exposure": { "type": "string" }, "scenario": { "type": "string" }
+          }
+        }
+      },
+      "validation_notes": { "type": "array", "items": { "type": "string" } },
+      "coverage_gaps": { "type": "array", "maxItems": 3, "items": { "type": "string" } }
+    }
+  },
+
+  "SCORE_SCHEMA": {
+    "used_by": "02 Scoring Panel (x3 lenses)",
+    "type": "object",
+    "required": ["risks"],
+    "properties": {
+      "risks": {
+        "type": "array", "minItems": 5, "maxItems": 5,
+        "items": {
+          "type": "object",
+          "required": ["risk_id", "tef", "tef_reason", "vuln", "vuln_reason", "primary_impact", "primary_impact_reason", "secondary_impact", "secondary_impact_reason"],
+          "properties": {
+            "risk_id": { "type": "string" },
+            "tef": { "type": "integer", "minimum": 1, "maximum": 5 }, "tef_reason": { "type": "string" },
+            "vuln": { "type": "integer", "minimum": 1, "maximum": 5 }, "vuln_reason": { "type": "string" },
+            "primary_impact": { "type": "integer", "minimum": 1, "maximum": 5 }, "primary_impact_reason": { "type": "string" },
+            "secondary_impact": { "type": "integer", "minimum": 1, "maximum": 5 }, "secondary_impact_reason": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+
+  "CHALLENGE_SCHEMA": {
+    "used_by": "03 Adversarial Challenger (x2 angles)",
+    "type": "object",
+    "required": ["verdict", "argument", "alternative_top_risk_id", "key_evidence", "confidence"],
+    "properties": {
+      "verdict": { "type": "string", "enum": ["upheld", "refuted"] },
+      "argument": { "type": "string" },
+      "alternative_top_risk_id": { "type": "string", "description": "empty string if verdict is upheld" },
+      "key_evidence": { "type": "array", "items": { "type": "string" } },
+      "confidence": { "type": "string", "enum": ["low", "medium", "high"] }
+    }
+  },
+
+  "MITIGATION_SCHEMA": {
+    "used_by": "04 Mitigation Architect (x5, one per risk)",
+    "type": "object",
+    "required": ["risk_id", "strategy_summary", "primary_control", "controls", "owner", "effort", "quick_wins", "soc2_criteria", "residual_gaps", "human_review_notes"],
+    "properties": {
+      "risk_id": { "type": "string" },
+      "strategy_summary": { "type": "string" },
+      "primary_control": { "type": "string", "description": "the single named control that does most of the work" },
+      "controls": {
+        "type": "array", "minItems": 1, "maxItems": 5,
+        "items": {
+          "type": "object",
+          "required": ["name", "type", "description", "azure_m365_feature"],
+          "properties": {
+            "name": { "type": "string" },
+            "type": { "type": "string", "enum": ["preventive", "detective", "corrective", "administrative"] },
+            "description": { "type": "string" },
+            "azure_m365_feature": { "type": "string" }
+          }
+        }
+      },
+      "owner": { "type": "string", "description": "specific role at a 200-person company" },
+      "effort": {
+        "type": "object",
+        "required": ["tshirt", "person_weeks", "cost_estimate_usd"],
+        "properties": {
+          "tshirt": { "type": "string", "enum": ["S", "M", "L"] },
+          "person_weeks": { "type": "number" },
+          "cost_estimate_usd": { "type": "string" }
+        }
+      },
+      "quick_wins": { "type": "array", "items": { "type": "string" } },
+      "soc2_criteria": { "type": "array", "items": { "type": "string" } },
+      "residual_gaps": { "type": "array", "items": { "type": "string" } },
+      "human_review_notes": { "type": "string" }
+    }
+  },
+
+  "FEASIBILITY_SCHEMA": {
+    "used_by": "05 IT Feasibility Reviewer (x5)",
+    "type": "object",
+    "required": ["risk_id", "verdict", "concerns", "required_changes", "adjusted_effort", "sequencing_note"],
+    "properties": {
+      "risk_id": { "type": "string" },
+      "verdict": { "type": "string", "enum": ["approve", "approve_with_changes", "rework"] },
+      "concerns": { "type": "array", "items": { "type": "string" } },
+      "required_changes": { "type": "array", "items": { "type": "string" } },
+      "adjusted_effort": {
+        "type": "object",
+        "required": ["tshirt", "person_weeks", "cost_estimate_usd"],
+        "properties": {
+          "tshirt": { "type": "string", "enum": ["S", "M", "L"] },
+          "person_weeks": { "type": "number" },
+          "cost_estimate_usd": { "type": "string" }
+        }
+      },
+      "sequencing_note": { "type": "string" }
+    }
+  },
+
+  "QUANT_SCHEMA": {
+    "used_by": "06 Quantification Estimator (x5)",
+    "type": "object",
+    "required": ["risk_id", "baseline", "effectiveness", "key_assumptions", "confidence", "human_review_required", "human_review_reason"],
+    "properties": {
+      "risk_id": { "type": "string" },
+      "baseline": {
+        "type": "object",
+        "required": ["low_pct", "mode_pct", "high_pct", "basis"],
+        "properties": {
+          "low_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+          "mode_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+          "high_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+          "basis": { "type": "string" }
+        }
+      },
+      "effectiveness": {
+        "type": "object",
+        "required": ["low_pct", "mode_pct", "high_pct", "basis"],
+        "properties": {
+          "low_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+          "mode_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+          "high_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+          "basis": { "type": "string" }
+        }
+      },
+      "key_assumptions": { "type": "array", "items": { "type": "string" } },
+      "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+      "human_review_required": { "type": "boolean" },
+      "human_review_reason": { "type": "string" }
+    }
+  },
+
+  "REVISED_QUANT_SCHEMA": {
+    "used_by": "08 Estimate Revision (only red-team-flagged risks)",
+    "_note": "QUANT_SCHEMA plus a mandatory change_log: one entry per red-team issue — what changed, or the rebuttal for standing firm.",
+    "extends": "QUANT_SCHEMA",
+    "additional_required": ["change_log"],
+    "additional_properties": {
+      "change_log": { "type": "array", "items": { "type": "string" } }
+    }
+  },
+
+  "REDTEAM_SCHEMA": {
+    "used_by": "07 Quantification Red Team (x1, barrier over all 5 estimates)",
+    "type": "object",
+    "required": ["issues", "correlation_concerns", "overall_assessment"],
+    "properties": {
+      "issues": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["risk_id", "target", "problem", "suggested_correction"],
+          "properties": {
+            "risk_id": { "type": "string" },
+            "target": { "type": "string", "enum": ["baseline", "effectiveness", "assumptions"] },
+            "problem": { "type": "string" },
+            "suggested_correction": { "type": "string" }
+          }
+        }
+      },
+      "correlation_concerns": { "type": "array", "items": { "type": "string" } },
+      "overall_assessment": { "type": "string" }
+    }
+  }
+}

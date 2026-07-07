@@ -1,0 +1,515 @@
+[
+  {
+    "risk_id": "R3",
+    "rank": 1,
+    "mitigation": {
+      "risk_id": "R3",
+      "strategy_summary": "Make stolen secrets worthless rather than trying to prevent every theft. The attack chain (infostealer \u2192 GitHub PAT \u2192 repo-history secrets \u2192 Contributor service principal \u2192 full subscription) only works because long-lived, unrotated, over-scoped credentials exist. The package (1) replaces the CI service-principal secret with GitHub Actions OIDC federation so there is no secret to steal, and downscopes Contributor to least-privilege resource-group roles; (2) stops new leaks with secret-scanning push protection and kills existing ones via a one-time history sweep and rotation; (3) removes runtime connection strings using managed identities and Key Vault, and closes network paths so a leaked historical connection string no longer reaches PostgreSQL; (4) adds low-effort detection of anomalous service-principal and storage activity via Defender for Cloud and Activity Log alerts (no SIEM, no SOC); and (5) guarantees recovery from the ransom/destruction branch with immutable backups and a written revoke-rotate-hunt runbook. Every item is Azure/M365/GitHub-native, operable by a 3-person IT team plus engineering, and generates direct SOC 2 evidence for the Type I audit.",
+      "primary_control": "GitHub Actions OIDC workload identity federation to Entra ID \u2014 delete all long-lived service-principal client secrets from GitHub and replace subscription-level Contributor with least-privilege, resource-group-scoped RBAC roles. This removes the single credential that converts a laptop infection into full production compromise: with federated credentials there is no reusable secret in GitHub to harvest, tokens are minutes-lived and only issued to the specific repo/branch/environment, and even a hijacked pipeline can no longer touch the whole subscription.",
+      "controls": [
+        {
+          "name": "Passwordless CI/CD: GitHub Actions OIDC federation + least-privilege RBAC",
+          "type": "preventive",
+          "description": "Create federated credentials on the deployment service principals (Entra ID workload identity federation) bound to specific GitHub org/repo/branch/environment claims; migrate all workflows to azure/login with OIDC; delete every client secret on those service principals. Simultaneously replace subscription-scope Contributor with narrow roles scoped to the production resource group(s) \u2014 e.g. Website Contributor on the App Service, a custom role for Postgres config, Storage Blob Data Contributor only on required containers. Pin third-party Actions to commit SHAs and require environment protection rules (reviewers) for production deploys. Result: no long-lived cloud secret exists in GitHub, and the residual token cannot reach backups or the whole subscription.",
+          "azure_m365_feature": "Entra ID workload identity federation + Azure RBAC custom roles + GitHub Actions OIDC (azure/login) + GitHub environment protection rules \u2014 all included in existing licensing, $0"
+        },
+        {
+          "name": "GitHub credential hygiene: secret scanning with push protection, Entra SSO, PAT lockdown",
+          "type": "preventive",
+          "description": "Enable GitHub Secret Protection org-wide: secret scanning across all private repos (including full history) with push protection blocking new commits containing credentials. Enforce SAML/OIDC SSO to Entra ID for the GitHub org so a stolen password alone cannot log in, disable classic PATs via org policy, and require fine-grained PATs with a 90-day maximum lifetime and least-repo scope. Triage every historical finding: rotate/revoke each live secret, then invalidate the old values (history rewriting is optional; rotation is what matters). This closes both leak paths named in the risk \u2014 repo history and freshly committed secrets \u2014 and shrinks what an infostealer-stolen PAT can do.",
+          "azure_m365_feature": "GitHub Secret Protection add-on (secret scanning + push protection, ~$19/active committer/month) + GitHub org SAML SSO to Entra ID + GitHub PAT org policies"
+        },
+        {
+          "name": "Eliminate runtime connection strings: managed identities, Key Vault, network lockdown",
+          "type": "preventive",
+          "description": "Enable system-assigned managed identity on App Service; switch PostgreSQL Flexible Server to Entra ID authentication and Blob Storage to managed-identity access, removing passwords/keys from app settings. Park any secret that cannot yet be eliminated (third-party API keys) in Azure Key Vault referenced via Key Vault references, with expiry dates set. Rotate the PostgreSQL admin and all application DB passwords found in repo history, disable Blob shared-key access where possible, and restrict PostgreSQL public network access to App Service outbound IPs (or private endpoint). After this, every connection string sitting in years of git history is dead: rotated, and unreachable from the internet anyway.",
+          "azure_m365_feature": "Azure managed identities + Entra ID auth for Azure Database for PostgreSQL Flexible Server + Azure Key Vault (+ Key Vault references in App Service) + PostgreSQL firewall/private endpoint \u2014 Key Vault ~$5/month, rest included"
+        },
+        {
+          "name": "Anomalous credential-use detection: Defender for Cloud plans + Activity Log/sign-in alerts",
+          "type": "detective",
+          "description": "Enable Microsoft Defender for Cloud plans on the production subscription: Defender for Resource Manager (flags suspicious ARM operations like persistence-planting and privilege grants), Defender for Storage (mass-download/exfiltration detection on Blob including backups), Defender for Open-Source Relational Databases (anomalous Postgres access), and Defender for Key Vault. Add Azure Monitor alert rules on the Activity Log (role assignments, Key Vault policy changes, backup deletions) and Entra sign-in log alerts for the CI service principals authenticating outside GitHub-hosted-runner IP ranges or outside deploy windows. Route alerts to a Teams channel and IT/on-call email. This is right-sized detection for a 3-person team \u2014 curated high-signal alerts, no SIEM to operate.",
+          "azure_m365_feature": "Microsoft Defender for Cloud (Resource Manager, Storage, OSS RDB, Key Vault plans) + Azure Monitor/Activity Log alerts + Entra ID sign-in logs \u2014 roughly $1-4k/yr at this footprint; no Sentinel required"
+        },
+        {
+          "name": "Breach-resilient recovery: immutable backups, resource locks, and a secret-leak runbook",
+          "type": "corrective",
+          "description": "Copy database and Blob backups to a container with a time-based immutability (WORM) policy plus soft delete and versioning, and configure Azure Backup long-term retention for PostgreSQL Flexible Server into a vault with multi-user authorization/soft delete, so a Contributor-level attacker cannot destroy recovery data. Apply CanNotDelete resource locks on production storage and database resources. Write and tabletop-test a one-page secret-leak runbook: revoke the PAT/SP credential, rotate downstream secrets in priority order, hunt the service principal's sign-in and Activity Log trail, restore from immutable copy if needed. Quarterly restore test doubles as SOC 2 availability evidence.",
+          "azure_m365_feature": "Azure Blob immutable storage (WORM) + blob soft delete/versioning + Azure Backup for PostgreSQL Flexible Server + Azure resource locks \u2014 storage-cost only, roughly $100-300/month extra"
+        }
+      ],
+      "owner": "Head of Engineering (accountable; owns GitHub org, pipelines, and app code changes) with the IT Manager as named co-owner for Entra ID federation, Defender for Cloud, and alert routing",
+      "effort": {
+        "tshirt": "M",
+        "person_weeks": 9,
+        "cost_estimate_usd": "$13k-22k/yr: GitHub Secret Protection ~$11-14k (\u224850-60 active committers \u00d7 $19/mo), Defender for Cloud plans $1-4k, Key Vault/immutable backup storage/alerting <$1k. No Entra ID P2 or Sentinel required; OIDC federation, RBAC, managed identities, and GitHub SSO enforcement are $0 on existing licenses."
+      },
+      "quick_wins": [
+        "Rotate the GitHub Actions service-principal secret today, set a 90-day expiry as an interim measure, and downscope it from subscription Contributor to the production resource group (2-4 hours)",
+        "Run a free gitleaks/trufflehog sweep across all repos and history to inventory live secrets; immediately rotate anything production-grade found (1-2 days)",
+        "Enforce Entra SSO on the GitHub org, revoke all classic PATs, and set org policy requiring fine-grained PATs with max 90-day lifetime (half a day)",
+        "Restrict PostgreSQL Flexible Server public network access to App Service outbound IPs and enforce SSL \u2014 instantly deadens most historical connection strings (half a day)",
+        "Enable blob soft delete + versioning on the backup storage account and add CanNotDelete resource locks to prod database and storage (2 hours)",
+        "Create one Activity Log alert for role assignments/elevations and one Entra sign-in alert for the CI service principal authenticating from non-GitHub-runner IPs, routed to Teams (half a day)"
+      ],
+      "soc2_criteria": [
+        "CC6.1",
+        "CC6.2",
+        "CC6.3",
+        "CC6.6",
+        "CC7.1",
+        "CC7.2",
+        "CC7.4",
+        "CC8.1",
+        "A1.2"
+      ],
+      "residual_gaps": [
+        "Does not fix the root cause on endpoints: unmanaged, local-admin laptops with no EDR remain infostealer-prone (needs the Intune/Defender for Endpoint work in the endpoint risk); a stolen GitHub session cookie can still read source code and IP even when it can no longer reach Azure",
+        "Phishable Authenticator-push MFA and absent Conditional Access mean a phished engineer's Entra account with direct Azure portal rights bypasses this package entirely (separate identity-hardening risk)",
+        "Contractor direct PostgreSQL accounts and manual offboarding (R5) are only partially mitigated by network restriction \u2014 their credentials still exist and need lifecycle controls",
+        "Supply-chain compromise of a pinned GitHub Action can still execute inside a production deploy run with the pipeline's (now-narrow) OIDC permissions during that run",
+        "Detection is business-hours only: Defender/Monitor alerts go to a 3-person IT team with no 24/7 response, so a well-timed weekend attack has a longer dwell window",
+        "Secret scanning detects known credential patterns; bespoke tokens for the ~15 downstream SaaS apps and any secrets shared over email/Teams/wikis are out of scope"
+      ],
+      "human_review_notes": "Verify before funding: (1) GitHub plan compatibility \u2014 the Secret Protection add-on ($19/committer/mo, standalone since April 2025) requires GitHub Team or Enterprise Cloud; confirm the actual active-committer count (billed metric) rather than assuming all 60 engineers, and confirm SAML SSO enforcement is available on the current plan (Enterprise Cloud only \u2014 this may be the hidden cost driver, ~$21/user/mo, and should be priced explicitly if they are on Team). (2) App feasibility of Entra ID auth to PostgreSQL \u2014 driver/token-refresh support in their language stack; if impractical short-term, fall back to Key Vault-stored passwords with 90-day rotation and keep the network lockdown. (3) Defender for Storage is per-transaction-priced on some plans \u2014 model against actual Blob transaction volume and cap malware-scanning GB to avoid bill surprises. (4) Confirm Azure Backup long-term retention for PostgreSQL Flexible Server is available in their region; otherwise use pg_dump-to-immutable-blob as the isolation mechanism. (5) Immutability policy duration is irreversible once locked \u2014 legal/finance should agree retention length first. (6) Sequence the work so OIDC migration and secret rotation land before the SOC 2 Type I evidence window opens (~6 months out), and check whether their auditor wants the runbook tabletop documented as a test. (7) Sanity-check that engineering can absorb ~9 person-weeks alongside roadmap; the two-week primary control (OIDC + RBAC downscope) should be funded even if the rest slips a quarter."
+    },
+    "feasibility": {
+      "risk_id": "R3",
+      "verdict": "approve_with_changes",
+      "concerns": [
+        "Hidden licensing trap: enforcing SAML SSO on the GitHub org requires GitHub Enterprise Cloud (~$21/user/mo, ~$15k/yr at 60 seats). The package's own review notes admit this but the $13k-22k estimate silently excludes it. If we are on GitHub Team today, this one line item roughly doubles the annual cost \u2014 it must be priced or descoped before funding, not discovered at renewal.",
+        "Most of the 9 person-weeks is engineering work (workflow OIDC migration, managed-identity code changes, Postgres Entra auth with token refresh in connection pools), not IT work. My team of 3 can realistically contribute ~2-3 person-weeks around the SOC 2 tax; if the Head of Engineering doesn't have a written, exec-backed allocation, this package quietly dies at 40% done \u2014 with half the secrets rotated and half still live, which is worse audit evidence than not starting.",
+        "Entra ID authentication to PostgreSQL Flexible Server is the riskiest change in the package: access tokens expire in ~60-90 minutes, so every connection pool needs refresh logic, and driver support varies by language. This is a plausible production-outage generator. The Key Vault-password-with-rotation fallback buried in the review notes should be the v1 plan, not a contingency.",
+        "Deployment breakage during OIDC + RBAC downscoping: the instruction to 'delete every client secret' and swap Contributor for narrow custom roles will break the first deploy that needs an unanticipated permission (App Service slot swaps, Postgres config writes, diagnostic settings). Without a pilot repo and a per-repo verify-then-delete rollout, we get engineers blocked mid-release and pressure to re-grant Contributor 'temporarily' \u2014 which then never gets removed.",
+        "Quick win #4 (restrict Postgres public access to App Service outbound IPs) directly collides with the stated fact that contractors hold direct PostgreSQL accounts. Flipping that switch on day one breaks contractor work with no bastion/VPN in place. It needs an access-path answer coordinated with the R5 (offboarding/contractor lifecycle) mitigation first.",
+        "Alert load on a 3-person team: Defender for Cloud plans out of the box are noisy (Resource Manager and Storage plans especially). Without a budgeted 2-4 week tuning period and a named alert owner with a triage SLA, the Teams channel becomes wallpaper within a month and the detective control exists only on paper \u2014 an auditor will ask who reviews alerts and we'll have no evidence.",
+        "Historical secret triage is underestimated: a gitleaks/trufflehog sweep over years of history across the org typically yields hundreds of findings, mostly stale, each needing a human to decide live/dead/rotate. The '1-2 days' quick-win framing covers the scan, not the triage and coordinated rotation, which is more like 1-2 person-weeks on its own.",
+        "Irreversible/breaking storage changes: a locked time-based WORM immutability policy cannot be shortened, and disabling shared-key access can silently break existing backup scripts, AzCopy jobs, and SAS-token integrations. Both need an unlocked trial period and a dependency inventory before enforcement.",
+        "Defender for Storage on some plans bills per-transaction/per-GB-scanned; a multi-tenant SaaS with heavy Blob traffic could blow past the $1-4k/yr figure. Needs modeling against actual transaction volume with malware-scanning capped, before enabling."
+      ],
+      "required_changes": [
+        "Resolve the GitHub plan question before funding: confirm current plan and actual active-committer count. If on Team, either budget the Enterprise Cloud upgrade explicitly (~$15k/yr) or replace SAML SSO enforcement with enforced 2FA + classic-PAT disablement + fine-grained PAT policy (available on Team) and defer SSO to next year. No approval on an estimate with a known unpriced dependency.",
+        "Rewrite the plan as four phases with gates: Phase 0 (weeks 1-2) = amended quick wins; Phase 1 (weeks 2-6) = OIDC + RBAC downscope piloted on ONE deploy repo, run parallel with the old secret for two release cycles, then per-repo verify-then-expire (set secrets to expire, don't hard-delete day one), then org rollout; Phase 2 (weeks 4-8) = secret-scanning enablement + historical triage/rotation with a realistic 1-2 person-week triage budget; Phase 3 (weeks 8-13) = managed identities + Key Vault, with Key Vault-stored rotated passwords as the committed v1 for Postgres and Entra-auth-to-Postgres moved to a stretch/next-quarter item; Phase 4 = Defender plans + immutable backups.",
+        "Amend quick win #4: do NOT restrict Postgres public network access until contractor access is re-homed (P2S VPN, jump box, or at minimum per-contractor IP allowlist entries with expiry, coordinated with the R5 mitigation). Enforce SSL and rotate the admin password immediately instead \u2014 those are safe day-one.",
+        "Add a named engineering allocation to the effort section (approximately 8-10 person-weeks engineering, 3 person-weeks IT) with written sign-off from the Head of Engineering and an exec sponsor, plus the explicit statement that the Phase 1 primary control is funded even if Phases 3-4 slip a quarter.",
+        "Add a 2-4 week Defender/alert tuning period with a named alert owner, a documented triage SLA (business hours), and an expected-volume review after 30 days; document this as the monitoring procedure so it doubles as CC7.2 evidence.",
+        "Storage safety rails: run the immutability policy UNLOCKED for 30-60 days with retention length signed off by legal/finance before locking; inventory all shared-key/SAS consumers before disabling shared-key access; verify Azure Backup long-term retention for PostgreSQL Flexible Server is available in our region (else commit to the pg_dump-to-immutable-blob alternative in the plan, not as a footnote).",
+        "Get a written Defender for Storage cost model against last month's actual Blob transaction volume (with malware scanning GB-capped) before enabling the plan."
+      ],
+      "adjusted_effort": {
+        "tshirt": "L",
+        "person_weeks": 13,
+        "cost_estimate_usd": "$15k-32k/yr recurring: $13-22k as proposed IF already on GitHub Enterprise Cloud; add ~$15k/yr (60 x ~$21/mo) if an Enterprise upgrade is needed for SSO enforcement, or hold at ~$14-18k by descoping SSO to 2FA+PAT policy on Team. Labor: ~13 person-weeks total (8-10 engineering, ~3 IT) vs the claimed 9 \u2014 the delta is secret-triage reality, OIDC pilot/parallel-run overhead, and alert tuning."
+      },
+      "sequencing_note": "R3's quick wins (amended per above) go first among all five mitigations \u2014 highest risk-reduction per hour, IT-executable, and they generate immediate CC6.1/CC6.3/CC8.1 evidence. The full Phase 1 primary control (OIDC + RBAC downscope) runs months 1-3, in parallel with the identity-hardening mitigation (Conditional Access / phishing-resistant MFA), because that work is IT-owned while OIDC is engineering-owned \u2014 no resource collision. The endpoint mitigation (Intune to 100%, remove local admin, EDR) should not be deprioritized to fund this: it is the root cause R3 explicitly cannot fix, and both must land. Quick win #4 (Postgres network lockdown) is gated behind the R5 contractor-access work. Phases 3-4 (managed identities, Defender, immutable backups) must be operating, not just configured, at least 4-6 weeks before the Type I evidence date so the auditor sees controls in place at the point in time \u2014 practically that means all R3 phases complete by month 4-4.5, with the Entra-auth-to-Postgres stretch item explicitly allowed to slip past the audit since the Key Vault fallback satisfies the control objective. Budget for a change-freeze buffer in the final month before the audit: no risky Postgres auth or storage-key changes inside that window."
+    }
+  },
+  {
+    "risk_id": "R1",
+    "rank": 2,
+    "mitigation": {
+      "controls": [
+        {
+          "name": "Phishing-resistant MFA enforced via Entra Conditional Access authentication strengths",
+          "type": "preventive",
+          "description": "Roll out passkeys (device-bound passkeys in Microsoft Authenticator for all 200 staff; FIDO2 hardware keys for Global Admins, IT, and finance/AP roles) and enforce them with a Conditional Access policy requiring the built-in 'Phishing-resistant MFA' authentication strength. Phase: privileged roles week 1, finance + IT week 2, all users over ~6 weeks with report-only mode first. This directly defeats Evilginx-class AiTM because FIDO2/passkey assertions are origin-bound \u2014 the proxied login page cannot complete authentication, so there is no session cookie to steal. Registration is protected by requiring a Temporary Access Pass issued by IT for new/changed methods.",
+          "azure_m365_feature": "Entra ID Conditional Access authentication strengths + passkeys in Microsoft Authenticator (Entra ID P1, included in M365 E3; passkeys free)"
+        },
+        {
+          "name": "Conditional Access session hardening: compliant device requirement, legacy auth block, and download restrictions for unmanaged devices",
+          "type": "preventive",
+          "description": "Second layer for the cookie-replay path: (1) CA policy blocking legacy authentication tenant-wide; (2) CA policy requiring an Intune-compliant device for Exchange Online/SharePoint/the 15 SSO apps \u2014 which makes a replayed session from attacker infrastructure fail the device check \u2014 with 'app-enforced restrictions' (web-only, no download) as the interim state while Intune enrollment is driven from 60% to ~100%; (3) sign-in frequency of 12h + no persistent sessions for privileged roles. Continuous Access Evaluation (on by default) makes revocations and location-policy changes bite mid-session rather than at token expiry.",
+          "azure_m365_feature": "Entra Conditional Access (P1 in E3) + Intune device compliance (already licensed in E3) + Exchange Online/SharePoint app-enforced restrictions"
+        },
+        {
+          "name": "Identity threat detection with automated response (Entra ID Protection + Defender for Office 365 P2 attack disruption)",
+          "type": "detective",
+          "description": "The realistic 'SIEM substitute' for a 3-person team: license the Microsoft 365 E5 Security add-on to get (a) Entra ID Protection risk-based CA \u2014 user-risk 'High' forces password reset + session revocation automatically, sign-in risk requires re-auth, both catching anomalous token replay; (b) Defender for Office 365 P2 \u2014 Safe Links/Safe Attachments to cut AiTM lure delivery, plus Automated Investigation & Response; (c) Microsoft Defender XDR automatic attack disruption, which specifically auto-disables user accounts and revokes sessions in detected AiTM campaigns with no analyst in the loop. Alerts route to a monitored shared mailbox/Teams channel for the IT team. (The same add-on includes Defender for Endpoint P2, which the R4 endpoint risk package will need \u2014 one license solves two risks.)",
+          "azure_m365_feature": "Microsoft 365 E5 Security add-on (Entra ID P2 / Identity Protection, Defender for Office 365 P2, Defender XDR attack disruption)"
+        },
+        {
+          "name": "Account-takeover containment runbook with session revocation and inbox-rule tripwires",
+          "type": "corrective",
+          "description": "A one-page, tested runbook the two sysadmins can execute in <30 minutes: revoke all refresh/session tokens (Entra 'Revoke sessions' / Revoke-MgUserSignInSession), reset credentials, disable account, enumerate and delete malicious inbox rules and OAuth consent grants, check mail-forwarding and eDiscovery/SharePoint mass-download activity, and notify finance to freeze pending vendor payments. Supporting configuration: Exchange Online external auto-forwarding disabled by transport policy, alert policies for 'suspicious inbox rule' and 'mass download', and quarterly tabletop of the runbook (which doubles as SOC 2 incident-response evidence).",
+          "azure_m365_feature": "Entra ID revoke sessions + Microsoft Purview/Defender alert policies + Exchange Online transport rules (all included in E3/E5 Security)"
+        },
+        {
+          "name": "Phishing simulation, targeted training, and privileged-access hygiene",
+          "type": "administrative",
+          "description": "Quarterly phishing simulations using Attack Simulation Training (included in Defender for Office 365 P2) with AiTM-style credential-harvest templates, auto-enrolling clickers into short training; a written policy that IT will never ask for MFA approval and that all privileged actions require hardware-key auth; Entra PIM (included in P2 via E5 Security) to convert standing Global Admin/privileged roles to just-in-time activation, shrinking what a hijacked admin session can do. Produces recurring, dated audit evidence for the Type I/II window.",
+          "azure_m365_feature": "Attack Simulation Training (Defender for Office 365 P2) + Entra PIM (Entra ID P2 via E5 Security add-on)"
+        }
+      ],
+      "risk_id": "R1",
+      "strategy_summary": "Remove the phishable factor rather than trying to out-detect commodity AiTM kits: enforce origin-bound passkeys via Conditional Access authentication strengths so a proxied Entra login can never mint a session cookie (kills the vuln score of 4 at its root), then bind remaining sessions to Intune-compliant devices so any stolen cookie replayed from attacker infrastructure fails device checks. Because a 3-person IT team cannot triage sign-in anomalies manually, detection is delegated to Microsoft's automated layer (Entra ID Protection risk policies + Defender XDR attack disruption, which auto-disables accounts in AiTM campaigns) instead of a SIEM. A tested 30-minute ATO containment runbook plus inbox-rule/auto-forward tripwires caps the BEC and bulk-download blast radius, and quarterly simulations plus PIM shrink both the human attack surface and what a hijacked admin session is worth. Everything is Entra/M365-native, runs on E3 + one E5 Security add-on, and every control emits dated evidence for the SOC 2 Type I audit in 6 months.",
+      "primary_control": "Phishing-resistant MFA (passkeys/FIDO2) enforced tenant-wide via Entra Conditional Access authentication strengths",
+      "owner": "IT Manager",
+      "effort": {
+        "tshirt": "M",
+        "person_weeks": 8,
+        "cost_estimate_usd": "$32k-48k/yr: E5 Security add-on ~$12/user/mo x 200 = ~$28.8k/yr (list; also covers EDR needs for R4), ~$2-4k one-time FIDO2 hardware keys for ~30 admins/finance/IT, remainder is IT labor for passkey rollout, CA policy staging, and closing the 40% Intune enrollment gap. Core preventive layer (passkeys + CA auth strengths) costs $0 in licensing \u2014 it is already in E3."
+      },
+      "quick_wins": [
+        "Create a Conditional Access policy requiring phishing-resistant authentication strength for all privileged Entra roles (Global Admin, Exchange Admin, etc.) and register hardware keys or Authenticator passkeys for those ~10-15 people \u2014 1-2 days, $0 license cost, removes the highest-value AiTM targets immediately",
+        "Block legacy authentication tenant-wide via Conditional Access in report-only for 48h, then enforce \u2014 closes the no-MFA bypass path in under a day",
+        "Disable external auto-forwarding in Exchange Online and enable the built-in 'suspicious inbox rule' and 'creation of forwarding/redirect rule' alert policies \u2014 under half a day, directly breaks the standard BEC playbook",
+        "Set sign-in frequency to 12 hours with persistent browser sessions disabled for admin roles, capping the lifetime of any stolen cookie",
+        "Enable Microsoft-managed Conditional Access baseline policies and confirm Continuous Access Evaluation is active so future revocations take effect in near-real-time",
+        "Write and circulate the one-page ATO containment runbook (revoke sessions, reset, hunt inbox rules) and walk both sysadmins through it once \u2014 also immediate SOC 2 incident-response evidence"
+      ],
+      "soc2_criteria": [
+        "CC6.1",
+        "CC6.6",
+        "CC6.7",
+        "CC7.2",
+        "CC7.3",
+        "CC7.4"
+      ],
+      "residual_gaps": [
+        "Endpoint-resident token theft (R4 territory): an infostealer on a local-admin laptop can exfiltrate browser cookies/Primary Refresh Tokens after legitimate auth; compliant-device CA raises the bar but Entra token protection (token binding) is not yet GA across all workloads, so this package does not fully close post-issuance token theft",
+        "Downstream SaaS apps that permit local username/password login alongside Entra SSO bypass every CA policy here \u2014 each of the ~15 apps needs SSO-only enforcement verified app by app",
+        "Contractor direct PostgreSQL accounts, GitHub credentials/PATs, and long-lived Azure service-principal secrets are outside Entra CA entirely and are untouched by this package (separate risk items)",
+        "Until Intune enrollment reaches ~100%, the compliant-device policy can only run in 'block download' mode, not full block \u2014 the remaining ~40% unenrolled fleet keeps a web-session window open",
+        "Detection depends on Microsoft's automated attack disruption and risk engine; there is no 24/7 human response, so a novel technique that evades XDR heuristics may run for hours overnight, and default log retention (30-180 days) is below forensic best practice without a later low-cost Sentinel tier",
+        "Vendor-side BEC (a supplier's tenant compromised, sending real invoices from a real account) is not addressed by hardening Meridian's own identity plane"
+      ],
+      "human_review_notes": "Verify E5 Security add-on pricing and eligibility on the current CSP/EA agreement (~$12/user/mo list as of early 2026; requires an eligible base license like M365 E3 \u2014 confirm all 200 seats qualify, and compare against buying Entra ID P2 + Defender for Office P2 separately, which is usually more expensive). Confirm passkey feasibility for the remote workforce: device-bound passkeys in Authenticator need reasonably current iOS/Android \u2014 decide policy for staff who refuse Authenticator on personal phones (issue ~$25-60 FIDO2 keys instead; budget accordingly). Stage every CA policy in report-only mode for 1-2 weeks and validate against the 15 SSO apps \u2014 some older SAML apps mishandle auth-strength or device-compliance claims and could lock users out. Confirm at least two break-glass accounts excluded from CA with keys in a safe, or the IT Manager can lock the whole tenant out. Check the Intune enrollment plan for the unenrolled 40% (corporate vs BYOD split changes whether full device compliance is even achievable). Finally, confirm the SOC 2 auditor accepts Microsoft-native alerting/XDR as the monitoring control for CC7.2 in lieu of a SIEM \u2014 most do at this company size, but ask before the Type I window."
+    },
+    "feasibility": {
+      "risk_id": "R1",
+      "verdict": "approve_with_changes",
+      "concerns": [
+        "Effort is understated because closing the Intune enrollment gap (60% -> ~100%) is smuggled into this package. On a remote-first fleet with an unknown corporate/BYOD split, that is 3-4 person-weeks by itself, may never actually reach 100%, and the compliant-device CA policy this package leans on cannot be enforced until it lands. As written, the second preventive layer will sit in 'app-enforced restrictions' interim mode for months.",
+        "Calendar reality vs. person-weeks: my team is 3 people minus ~20% already committed to SOC 2 plus daily BAU tickets. Even 8 honest person-weeks of project work stretches to 3-4 months of calendar time. The 'all users over ~6 weeks' passkey phase is optimistic for 200 remote employees; plan 10-12 weeks with a help-desk surge (lost phones, old iOS/Android versions, TAP reissues) hitting my two sysadmins in each wave.",
+        "Temporary Access Pass issuance becomes the new attack surface. Once passkeys are enforced, the practical bypass is social-engineering the help desk into issuing a TAP. The package requires TAP for registration but defines no identity-verification procedure for issuing one, and the same two overloaded sysadmins are the ones being socially engineered.",
+        "Personal-phone refusal rate is underbudgeted. Remote workforce, no MDM on 40% of devices, users asked to put a corporate passkey in Authenticator on personal phones: expect 10-20% refusal, not zero. $2-4k for ~30 keys covers admins/finance only, with no backup keys; a lost single hardware key for a Global Admin is an instant lockout incident. Realistic key budget is $6-8k (2 keys per privileged user + a refuser pool + shipping to remote staff).",
+        "Defender XDR 'automatic attack disruption' is being sold as the SIEM substitute, but its AiTM disruption efficacy depends heavily on signal breadth - notably Defender for Endpoint and Defender for Cloud Apps being deployed. R4 (EDR rollout) has not happened yet, so at go-live the detective layer is weaker than the description implies. Alerts to a shared mailbox with no rota means overnight/weekend compromises run unattended - that is an accepted risk that needs to be written down, not implied.",
+        "Licensing/procurement: ~$28.8k/yr recurring E5 Security add-on is a new budget line needing CFO sign-off and CSP annual commitment (true-up/mid-term add rules vary); list price should be verified, and this approval should be explicitly co-owned with R4 since the license is being cost-justified across both risks.",
+        "CA deployment breakage risk on the 15 SSO apps: report-only mode does not perfectly simulate device-compliance and sign-in-frequency behavior on older SAML apps; one bad enforcement flip can lock out a department while both sysadmins are heads-down in SOC 2 evidence collection. Break-glass accounts are mentioned only in the human-review notes; they must be a hard gate, not a footnote.",
+        "The 'SSO apps allowing local username/password login' item is listed as a residual gap, but it invalidates every control in this package for any app where it is true. Verifying/disabling local login on 15 apps is cheap and belongs in scope."
+      ],
+      "required_changes": [
+        "Split Intune enrollment (60% -> target ~95% of corporate devices) into its own workstream shared with R4, with an explicit BYOD policy decision (enroll, stipend, or web-only forever). Re-state this package's compliant-device control honestly: 'app-enforced restrictions (block download) is the end-state of R1; full compliant-device enforcement is delivered by R4.'",
+        "Re-phase the rollout: privileged roles week 1 (unchanged), then a 2-week mixed pilot of 15-20 ordinary users across departments/OS versions BEFORE finance and all-user waves; extend the all-user passkey phase to 10-12 weeks and pre-schedule help-desk surge coverage for each wave.",
+        "Make break-glass a gate, not a note: two cloud-only emergency accounts with FIDO2 keys in a safe, excluded from every CA policy, with alerting on their use, tested BEFORE the first enforced CA policy ships.",
+        "Add a documented TAP issuance procedure with identity verification (live video + manager confirmation, no TAPs issued from inbound calls/chats) and log every issuance - this is also clean SOC 2 CC6.1 evidence.",
+        "Rebudget hardware keys to $6-8k: two keys per Global Admin/privileged/finance user (primary + backup) plus a ~30-key pool for Authenticator refusers; publish the personal-device policy (Authenticator or company-issued key, employee's choice) before wave 1, not during.",
+        "Move 'verify SSO-only enforcement / disable local password login on the 15 downstream apps' from residual_gaps into scope as a checklist deliverable (~2-3 days of work, invalidates the whole package if skipped).",
+        "Add an explicit alert-handling statement: business-hours response SLA, which Defender/ID Protection alert severities page the on-duty sysadmin vs. land in the mailbox, and a written acceptance of no 24/7 coverage signed by whoever owns risk acceptance.",
+        "Get CFO sign-off on the ~$29k/yr recurring E5 Security commitment (jointly justified with R4) and confirm CSP pricing/eligibility before any dependent work is scheduled; if it slips, the passkey + CA core (which is $0 licensing) proceeds anyway."
+      ],
+      "adjusted_effort": {
+        "tshirt": "L",
+        "person_weeks": 12,
+        "cost_estimate_usd": "$40k-58k year 1: ~$28.8k/yr E5 Security add-on (recurring, cost-shared with R4), $6-8k FIDO2 keys incl. backups and shipping, remainder IT labor for passkey waves, CA staging/validation on 15 SSO apps, TAP process, runbook/tabletop, and help-desk surge. Excludes the Intune 60->95% enrollment push (moved to the shared R4 workstream, ~3-4 additional person-weeks there). Calendar time: ~4 months at this team's real capacity, not 6 weeks."
+      },
+      "sequencing_note": "This goes first of the five mitigations. The identity plane fronts everything else (mail, SharePoint, the 15 SSO apps, Azure portal access), the quick wins are genuinely cheap and immediate (legacy-auth block, auto-forward kill, admin auth-strength policy - do all of them in weeks 1-2 before anything else in any package), and the E5 Security purchase is the same license R4's EDR needs, so buying it here unblocks R4. Run it as: quick wins + privileged/pilot waves in month 1; all-user passkey waves months 2-3 in parallel with SOC 2 evidence collection (the CA policies, runbook, tabletop, and phishing sims ARE CC6.x/CC7.x evidence, so this work partially pays down the audit rather than competing with it); full CA enforcement complete by end of month 4, leaving ~2 months of operating history before the Type I window. The compliant-device layer and Intune gap closure sequence behind R4 - do not let R1's success criteria depend on them. Contractor Postgres accounts, service-principal secrets, and repo-secret cleanup (the other risk packages) can start in parallel only where they need engineers rather than my two sysadmins; anything needing sysadmin hands queues behind the passkey waves."
+    }
+  },
+  {
+    "risk_id": "R2",
+    "rank": 3,
+    "mitigation": {
+      "risk_id": "R2",
+      "strategy_summary": "Layered defense sized for a 3-person IT team plus engineering ownership: (1) put a managed WAF in front of the app to absorb the continuous mass-scanner pressure that drives TEF>100/yr, (2) close the \"no secure-SDLC owner\" gap with automated code/dependency scanning gates in GitHub so SQLi and known CVEs are caught before deploy, (3) cut the >$2M tenant-crossing blast radius by hardening the app's PostgreSQL role and adding row-level security on tenant tables, (4) turn on native Azure threat detection and database audit logging so an exploitation attempt is seen in hours not months, and (5) validate annually with a third-party pen test that specifically hunts IDOR/logic flaws the WAF and static analysis cannot see. Every control produces SOC 2 evidence for the Type I audit in 6 months. Deliberately excluded: 24/7 SOC, dedicated AppSec hire, enterprise DAST suites.",
+      "primary_control": "Azure Web Application Firewall on Azure Front Door Premium (Microsoft Default Rule Set 2.1 + Bot Manager, Prevention mode) with App Service access restrictions locking the origin to Front Door traffic only",
+      "controls": [
+        {
+          "name": "Managed WAF in front of the app with origin lockdown",
+          "type": "preventive",
+          "description": "Deploy Azure Front Door Premium with Azure WAF managed rules (Microsoft Default Rule Set 2.1 covering SQLi/XSS/RCE/known CVE signatures, plus Bot Manager ruleset) in Detection mode for 2 weeks to tune false positives, then flip to Prevention. Lock the App Service down with access restrictions requiring the X-Azure-FDID header / AzureFrontDoor.Backend service tag so attackers cannot bypass the WAF by hitting the *.azurewebsites.net origin directly. This directly blunts the mass-scanner SQLi/CVE traffic that drives the TEF>100/yr rating. Regional alternative if cost matters: Application Gateway WAF v2 (single-region app, slightly cheaper, same OWASP rule sets).",
+          "azure_m365_feature": "Azure Front Door Premium + Azure Web Application Firewall (DRS 2.1, Bot Manager); App Service access restrictions"
+        },
+        {
+          "name": "Secure-SDLC gates: code scanning, dependency patching, and merge protection",
+          "type": "preventive",
+          "description": "Enable Dependabot alerts + security updates (free) on all product repos, and the GitHub Code Security add-on (CodeQL) on the main application repos only, to limit per-committer licensing. Add branch protection rules on main requiring the CodeQL check to pass and blocking merges with open critical alerts. Adopt a written patch SLA enforced through Dependabot PRs: critical internet-facing framework/library CVEs patched within 7 days, high within 30. This substitutes automation for the missing security engineer and attacks the vulnerability at its source rather than only shielding it.",
+          "azure_m365_feature": "GitHub Code Security (CodeQL) add-on, GitHub Dependabot (free), GitHub branch protection rules"
+        },
+        {
+          "name": "PostgreSQL blast-radius reduction: least-privilege app role + tenant row-level security",
+          "type": "preventive",
+          "description": "Replace the application's database account with a minimal role (no superuser/replication/pg_read_all_data, table-level grants only, statement_timeout set) so an injected query cannot trivially dump every table. Then retrofit PostgreSQL row-level security keyed on tenant_id for the highest-sensitivity tenant tables, with the app setting tenant context per request. This is the one control aimed squarely at the >$2M secondary-impact driver: a single SQLi/IDOR no longer reads all ~1,200 orgs' data in one query. Engineering-owned; scope to the top 10-20 tables first, expand iteratively.",
+          "azure_m365_feature": "Azure Database for PostgreSQL Flexible Server native roles/grants and row-level security (no extra license)"
+        },
+        {
+          "name": "Native threat detection + database audit logging with alerting",
+          "type": "detective",
+          "description": "Enable Microsoft Defender for Cloud plans: Defender for App Service (detects exploitation patterns, webshell drops, dangling DNS) and Defender for open-source relational databases on the PostgreSQL Flexible Server (detects SQL injection attempts, anomalous access, brute force). Enable pgAudit and diagnostic settings shipping Postgres logs to a Log Analytics workspace, with 3-5 alert rules (Defender high-severity alert, anomalous mass-read volume, failed-login bursts, new role/grant creation) routed to a Teams channel and email for IT + engineering on-call. Closes the 'no SIEM, exploitation undetected' finding without buying a SIEM: dwell time drops from months to hours during business hours.",
+          "azure_m365_feature": "Microsoft Defender for Cloud (Defender for App Service + Defender for open-source relational databases), pgAudit, Azure Monitor / Log Analytics alert rules"
+        },
+        {
+          "name": "Annual third-party web-app penetration test + vulnerability-management policy",
+          "type": "administrative",
+          "description": "Commission an annual manual web-application penetration test scoped to authenticated multi-tenant abuse (IDOR, tenant-boundary crossing, SSRF, authz logic) plus a retest of fixes. Third-party is genuinely required here: WAF and CodeQL cannot reliably find IDOR/business-logic flaws, and auditors and enterprise customers expect an independent report. Pair with a one-page vulnerability-management policy (scan cadence, patch SLAs, severity definitions, remediation ownership) that becomes standing SOC 2 evidence. Schedule the first test ~3 months before the Type I audit window so the report and remediation tickets land as evidence.",
+          "azure_m365_feature": "third-party: boutique pen-test firm (e.g. via Azure Marketplace vendors or CREST/OSCP-certified boutique); policy doc in SharePoint with review workflow"
+        }
+      ],
+      "owner": "Head of Engineering (accountable; IT Manager executes the WAF/Defender/Log Analytics infrastructure pieces)",
+      "effort": {
+        "tshirt": "M",
+        "person_weeks": 12,
+        "cost_estimate_usd": "$35k-60k/yr total: Front Door Premium WAF ~$5-8k/yr (base ~$330/mo + traffic; App Gateway WAF v2 alternative ~$4-6k/yr), GitHub Code Security add-on ~$14-22k/yr at $30/active committer/mo scoped to product repos (~40-60 committers), Defender for App Service + Defender for open-source relational DBs + Log Analytics ingestion ~$2-5k/yr, annual pen test $15-25k. Engineering labor (~12 person-weeks, dominated by the RLS retrofit) is internal, not cash."
+      },
+      "quick_wins": [
+        "Enable Dependabot alerts + security updates on all product repos and triage the initial critical list (free, ~1 day)",
+        "Toggle on Defender for App Service and Defender for open-source relational databases in Defender for Cloud and route alerts to email/Teams (~half a day)",
+        "Enable pgAudit + diagnostic logging on the PostgreSQL Flexible Server to Log Analytics with one anomalous-mass-read alert rule (~1-2 days)",
+        "Audit the application's PostgreSQL role: revoke superuser/ownership/pg_read_all-class privileges, set statement_timeout, confirm table-level grants only (~1-2 days)",
+        "Add a free OWASP ZAP baseline scan job to GitHub Actions against staging as an interim DAST signal until the WAF and CodeQL land (~1 day)",
+        "Verify PostgreSQL PITR backups are enabled and perform one test restore to a scratch server; file the result as SOC 2 evidence (~1 day)"
+      ],
+      "soc2_criteria": [
+        "CC6.1",
+        "CC6.6",
+        "CC7.1",
+        "CC7.2",
+        "CC7.4",
+        "CC8.1"
+      ],
+      "residual_gaps": [
+        "IDOR and business-logic flaws largely bypass both the WAF and CodeQL; between annual pen tests they are only weakly covered (the RLS control mitigates impact, not discovery)",
+        "No 24/7 response: Defender alerts firing nights/weekends wait for business hours, so exfiltration dwell time of hours-to-a-weekend remains",
+        "RLS coverage is incremental \u2014 legacy tables/queries outside the top-priority set stay dumpable via the app role until the retrofit completes",
+        "Does not address the credential/pipeline-secrets entry path (R3): contractor direct PostgreSQL accounts and long-lived service-principal secrets remain untouched by this package",
+        "SSRF to the Azure instance-metadata endpoint and abuse of the App Service managed identity is only partially covered (WAF SSRF rules are pattern-based)",
+        "No per-tenant data-egress anomaly detection \u2014 a slow, low-volume exfiltration under alert thresholds could still succeed",
+        "WAF prevention mode may need per-route exclusions after tuning, and novel encodings can evade managed rules"
+      ],
+      "human_review_notes": "Before funding: (1) Price Front Door Premium against Application Gateway WAF v2 using actual monthly egress/request volume \u2014 for a single-region App Service the App Gateway option is often cheaper, but Front Door Premium bundles bot protection and managed-rule auto-updates; also confirm the app has no websocket/large-upload/long-poll patterns that need WAF exclusions before Prevention mode. (2) GitHub Code Security billing is per unique active committer on enabled repos and requires GitHub Team or Enterprise Cloud \u2014 count real committers on the product repos (may be well under 60) and confirm the current GitHub plan before accepting the $14-22k figure. (3) Confirm Defender for open-source relational databases supports the exact Flexible Server tier in use and estimate Log Analytics ingestion GB/day (pgAudit on a busy DB can get expensive; start with ddl+role audit classes, not full read logging). (4) The RLS retrofit estimate assumes tenant_id exists on target tables \u2014 have the Head of Engineering scope a 2-day spike first; if the schema lacks consistent tenant keys, person-weeks grow materially and the t-shirt becomes L. (5) Book the pen-test vendor now: quality boutiques have 6-10 week lead times and the report must precede the SOC 2 Type I window. (6) Check customer SLAs before enabling statement_timeout on the app role to avoid breaking legitimate long-running reports."
+    },
+    "feasibility": {
+      "risk_id": "R2",
+      "verdict": "approve_with_changes",
+      "concerns": [
+        "Staffing collision: SOC 2 already consumes ~20% of my 3-person team. WAF deployment, 2+ weeks of Detection-mode tuning, Defender/Log Analytics setup, and ongoing WAF false-positive triage all land on IT. The package says 'engineering labor is internal, not cash' as if that makes it free \u2014 12 person-weeks of engineering on RLS is real capacity I can only 'borrow sparingly', and unowned engineering work does not happen.",
+        "The 12 person-week estimate is optimistic. Retrofitting RLS onto a mature multi-tenant schema almost always hits connection-pooling problems (per-request SET tenant context breaks under PgBouncer transaction pooling), ORM incompatibilities, and performance regressions that need testing across 1,200 tenants. The package's own review note admits the t-shirt becomes L if tenant keys are inconsistent \u2014 on a years-old codebase, assume they are. Separately, least-privilege role changes and statement_timeout will break background jobs, migrations, and long-running customer reports unless staged carefully.",
+        "Branch protection 'blocking merges with open critical alerts' will halt all deploys on day one: first-time Dependabot/CodeQL enablement on a mature codebase surfaces dozens-to-hundreds of criticals. The '~1 day' quick win covers enabling Dependabot, not triaging the backlog \u2014 that is weeks of engineering time nobody has costed.",
+        "WAF Prevention mode on a B2B app with 1,200 customer orgs is a customer-facing availability risk: webhooks, file uploads, odd integration payloads will trip managed rules. Two weeks of Detection tuning is thin, and post-flip false positives become permanent unplanned work for my team with no runbook or rollback path defined.",
+        "Detection without response: alerts route to a Teams channel for a team that has no on-call and is heads-down on SOC 2. Nights/weekends are explicitly uncovered (the package admits it), and business-hours coverage will degrade into alert fatigue within a month unless ownership and a triage rotation are named. Leadership must sign off on the weekend-dwell-time residual, not discover it post-breach.",
+        "Cost traps: (a) GitHub Code Security requires Team/Enterprise Cloud and bills per unique active committer across enabled repos \u2014 if the current plan is Free/legacy, there is an uncosted plan upgrade, and CodeQL adds CI minutes and merge latency; (b) Front Door Premium adds per-GB egress and request charges that scale with traffic \u2014 for a single-region app, App Gateway WAF v2 is the right default, not the 'alternative'; (c) pgAudit read-class logging into Log Analytics (~$2.30+/GB) can silently become the largest line item \u2014 yet the 'anomalous mass-read' alert the package promises largely depends on exactly that logging.",
+        "Pen test pricing of $15-25k is the floor for a serious authenticated multi-tenant IDOR-focused test plus retest; budget $20-30k and the vendor must be booked immediately or the report misses the Type I window.",
+        "Package correctly excludes R3 (credentials/pipeline secrets), but contractor direct-to-PostgreSQL accounts partially undermine control #3: RLS keyed on app-set tenant context does nothing against a direct DB login unless those accounts are also constrained or removed \u2014 that dependency on the R3 package should be explicit."
+      ],
+      "required_changes": [
+        "Gate the RLS retrofit on the 2-day schema/pooling spike BEFORE committing budget or the M t-shirt: spike must confirm tenant_id coverage on target tables and that per-request tenant context survives the app's connection-pooling mode. Re-baseline person-weeks after the spike; treat 'top 10-20 tables' as Phase 1 with a named engineering lead and allocated sprint capacity (not 'borrowed'), and accept completion after the Type I audit.",
+        "Split control #3 into two releases: (1) app-role least-privilege + statement_timeout shipped to staging first with regression tests on background jobs, migrations, and the longest-running customer reports (and SLA check) \u2014 this is the cheap 80% of blast-radius reduction; (2) RLS as the follow-on.",
+        "Phase the SDLC gates: run Dependabot + CodeQL in alert-only mode for 30 days, then block merges only on NEW critical alerts, with the pre-existing backlog exempted onto a burn-down plan owned by engineering. Count actual unique committers on product repos and confirm the GitHub plan tier before accepting the $14-22k line; if committers exceed ~50 or a plan upgrade is needed, re-price.",
+        "Make Application Gateway WAF v2 the default (single-region app) and require a written justification if Front Door Premium is chosen. Extend Detection mode to 4 weeks with a named engineering contact per product area triaging matches weekly, and write an emergency per-route-exclusion/rollback runbook before flipping to Prevention.",
+        "Detection scope discipline: start pgAudit with ddl+role classes only, set a Log Analytics daily ingestion cap and a cost alert, and rely on Defender for open-source relational databases for anomalous-read detection initially. Name an alert owner and a simple business-hours triage rotation (IT + eng on-call), and get leadership sign-off on the documented no-nights/weekends residual.",
+        "Rewrite the Dependabot quick win honestly: 'enable in 1 day; initial critical-alert triage is a separate 1-2 week engineering-owned task with a due date.'",
+        "Issue the pen-test PO within 2 weeks (6-10 week vendor lead time), scope to authenticated multi-tenant IDOR/tenant-crossing plus retest, budget $20-30k, report due no later than month 4 so remediation tickets exist before the Type I window.",
+        "Add an explicit cross-reference: RLS effectiveness assumes contractor direct-PostgreSQL access is removed or read-restricted under the R3 package; state the dependency and sequence R3's contractor-account cleanup before or alongside RLS."
+      ],
+      "adjusted_effort": {
+        "tshirt": "L",
+        "person_weeks": 18,
+        "cost_estimate_usd": "$45k-75k year 1 ($30k-55k/yr recurring): App Gateway WAF v2 ~$4-6k/yr as default (Front Door Premium $6-10k/yr with egress if chosen), GitHub Code Security $10-22k/yr after real committer count plus possible plan upgrade, Defender plans + capped Log Analytics $3-6k/yr, pen test $20-30k. 18 person-weeks split roughly: 4-5 IT (WAF, Defender, logging, tuning) and 13-14 engineering (role hardening, Dependabot/CodeQL backlog triage, RLS Phase 1) \u2014 the engineering share is the real constraint, not the cash."
+      },
+      "sequencing_note": "Weeks 1-2: run the six quick wins (minus the mislabeled Dependabot triage) plus the RLS spike and the pen-test PO \u2014 cheap, mostly IT-owned, and each produces immediate SOC 2 CC6.x/CC7.x evidence. Months 1-2: WAF in Detection\u2192Prevention and Defender/pgAudit alerting, deliberately front-loaded before months 4-6 when SOC 2 evidence-collection and audit prep will consume well over the current 20% of my team. Month 3-4: pen test executes and remediation tickets become audit evidence. RLS Phase 1 runs on engineering's calendar and is allowed to finish after the Type I \u2014 it is impact reduction, not an audit blocker. Relative to the other four mitigations: the identity package (phishing-resistant MFA/Conditional Access) and the R3 credential/secrets package outrank R2's big-ticket items on cost-per-risk-reduced and are prerequisites for parts of this one (contractor DB accounts undermine RLS), so their quick wins go first; R2's WAF/Defender work can run in parallel because it is IT-infrastructure-shaped while identity work is policy-shaped, but if engineering capacity gets squeezed, RLS slips before the offboarding-automation and secrets-rotation work does. Endpoint/Intune remediation (the likely R4/R5 item) is the one I would consciously sequence after this package, since Type I only needs its design plus a rollout plan."
+    }
+  },
+  {
+    "risk_id": "R4",
+    "rank": 4,
+    "mitigation": {
+      "risk_id": "R4",
+      "strategy_summary": "Close the unmanaged-endpoint gap rather than chase malware. The package makes Intune enrollment the price of admission to corporate data (Conditional Access compliant-device gating), strips the local-admin escalation path that turns a commodity loader into an encryption event, adds real EDR sized for a 3-person team via Defender for Business with automated investigation/remediation doing the after-hours watching, and pre-verifies M365-native recovery (OneDrive Files Restore, SharePoint versioning, Autopilot rebuilds) so a successful encryption of synced libraries becomes a same-day rollback instead of a multi-day outage with extortion leverage. Nearly everything rides on licenses they already own (M365 E3 includes Entra ID P1, Intune, LAPS, ASR); the only mandatory new spend is Defender for Business at roughly $3/user/month, which is Microsoft's sub-300-seat EDR SKU and deliberately avoids the E5 jump.",
+      "primary_control": "Entra ID Conditional Access policy requiring an Intune-compliant device for access to all M365 and Entra-federated apps \u2014 this both forces the unenrolled ~40% of laptops into management (the delivery vehicle for every other control: local-admin removal, ASR, EDR onboarding) and blocks the exact scenario pathway where an unmanaged laptop syncs and encrypts SharePoint/OneDrive libraries.",
+      "controls": [
+        {
+          "name": "Compliant-device Conditional Access gating (100% Intune enrollment)",
+          "type": "preventive",
+          "description": "Roll out an Entra Conditional Access policy 'Require device to be marked as compliant' for all users and all cloud apps, phased: report-only for 2 weeks to inventory unmanaged access, then enforce with a time-boxed exception group. Intune compliance policy requires Defender AV healthy, BitLocker on, OS patched, and (once deployed) EDR onboarded. Unenrolled laptops lose OneDrive sync and app access, which is precisely the R4 foothold.",
+          "azure_m365_feature": "Entra ID P1 Conditional Access + Microsoft Intune compliance policies (both included in existing M365 E3)"
+        },
+        {
+          "name": "Endpoint hardening: remove standing local admin + ASR rules + tamper protection",
+          "type": "preventive",
+          "description": "Via Intune: remove users from local Administrators, deploy Windows LAPS for break-glass local admin, enforce Defender tamper protection, and enable the highest-value Attack Surface Reduction rules in block mode (block executable content from email/webmail, block Office apps creating child processes, block credential stealing from LSASS, block untrusted unsigned processes from USB). This kills the 'trojanized installer escalates via local admin and disables AV' chain. Engineers who genuinely need elevation get either a documented exception group or Intune Endpoint Privilege Management (optional add-on).",
+          "azure_m365_feature": "Intune endpoint security baselines, Windows LAPS (free with Entra ID/Intune), Microsoft Defender ASR rules and tamper protection, SmartScreen/Network Protection"
+        },
+        {
+          "name": "EDR with automated investigation and remediation + weekly triage rota",
+          "type": "detective",
+          "description": "License and onboard Microsoft Defender for Business (Microsoft's EDR SKU for orgs under 300 seats) to all endpoints via Intune. Set automated investigation & remediation to Full \u2014 auto-isolate and auto-remediate without a human in the loop, which is what makes EDR viable for a 3-person IT team with no SOC. Route high-severity alerts to email/Teams; IT rota does a 30-minute daily portal check and weekly review. This directly fixes 'no EDR, nobody watching alerts.' Note: the Defender for Endpoint P1 already inside M365 E3 has no EDR/AIR \u2014 the upgrade is genuinely required.",
+          "azure_m365_feature": "Microsoft Defender for Business (standalone add-on, ~$3/user/mo; includes EDR, automated investigation/response, device isolation, threat & vulnerability management)"
+        },
+        {
+          "name": "Ransomware recovery readiness: Files Restore, versioning, Autopilot rebuild, tested runbook",
+          "type": "corrective",
+          "description": "Verify SharePoint/OneDrive versioning is at defaults or better (500 versions) on all libraries, confirm recycle-bin retention (93 days), and run a live test of OneDrive 'Files Restore' and SharePoint 'Restore this library' (30-day point-in-time rollback, included in M365) so encrypted synced libraries are recoverable in hours. Configure Windows Autopilot profiles so a compromised laptop is wiped and rebuilt remotely in under half a day. Write a 2-page ransomware runbook (isolate device in Defender portal, revoke user sessions in Entra, restore libraries, rebuild endpoint) and tabletop it once with the IT team. The test artifacts double as SOC 2 recovery evidence.",
+          "azure_m365_feature": "OneDrive Files Restore + SharePoint versioning/recycle bin (included in M365 E3) + Windows Autopilot + Defender device isolation"
+        },
+        {
+          "name": "Managed-device policy and monthly compliance attestation",
+          "type": "administrative",
+          "description": "Publish a short managed-device/acceptable-use policy stating that only Intune-compliant devices may access company data and that local admin is exception-only with expiry. IT Manager reviews a monthly Intune compliance report (enrollment %, non-compliant devices, ASR/EDR coverage) and files it as recurring SOC 2 evidence. This is the operating rhythm that keeps enrollment from decaying back to 60%.",
+          "azure_m365_feature": "Intune compliance reporting + Entra sign-in logs (included in E3), policy documented in existing wiki/handbook"
+        }
+      ],
+      "owner": "IT Manager (delivery by the two sysadmins; CTO signs the local-admin removal and CA enforcement dates because engineer friction escalates to Engineering)",
+      "effort": {
+        "tshirt": "M",
+        "person_weeks": 8,
+        "cost_estimate_usd": "$8k-18k/yr: Defender for Business ~$3/user/mo x 200 = ~$7.2k/yr (only mandatory new license); optional Intune Endpoint Privilege Management for ~60 engineers ~$3.60/user/mo = ~$2.6k/yr if the exception-group approach proves unworkable; Conditional Access (Entra P1), Intune, LAPS, ASR, Files Restore, Autopilot all included in existing M365 E3. Remainder is labor/contingency, no consultants assumed."
+      },
+      "quick_wins": [
+        "Enable Defender tamper protection, cloud-delivered protection, and PUA blocking tenant-wide via Intune/Defender portal (1 day, blocks AV-kill and much malvertising-delivered PUA immediately)",
+        "Deploy the top 4-5 ASR rules in block mode to the already-enrolled 60% of laptops after a 2-day audit-mode check (blocks executable content from email/web, Office child processes, LSASS credential theft)",
+        "Create the require-compliant-device Conditional Access policy in report-only mode to get a hard inventory of which users/devices are accessing data unmanaged (half a day, produces the enrollment target list)",
+        "Apply Conditional Access app-enforced restrictions so unmanaged devices get browser-only, no-download/no-sync access to SharePoint and OneDrive \u2014 this alone breaks the R4 scenario's sync-encryption path for the unenrolled 40% (1 day)",
+        "Verify SharePoint versioning and recycle-bin settings and run one live OneDrive Files Restore test; screenshot as SOC 2 recovery evidence (1 day)"
+      ],
+      "soc2_criteria": [
+        "CC6.1",
+        "CC6.6",
+        "CC6.8",
+        "CC7.2",
+        "CC7.4",
+        "CC7.5"
+      ],
+      "residual_gaps": [
+        "AiTM phishing of cloud sessions and token replay from any device is not fixed here \u2014 that requires phishing-resistant MFA/authentication strengths and is the R1 package; this package only shrinks the endpoint-malware path to tokens",
+        "No SIEM or long-term log retention: detection is bounded by the Defender portal (~30-180 days) and business-hours triage; an attacker dwelling over a long weekend still gets a head start",
+        "Contractor and true-BYOD devices outside Intune are excluded by design \u2014 the CA policy blocks them, but contractors with direct PostgreSQL access (R3/R5 territory) bypass the endpoint controls entirely",
+        "Effort and controls assume a Windows-dominant fleet; meaningful macOS share requires Intune macOS enrollment + Defender for Business for Mac and adds 2-3 person-weeks",
+        "Server-side ransomware/extortion against Azure production (Blob backups immutability, PostgreSQL) is untouched by this package",
+        "Engineers granted local-admin exceptions (or until EPM is licensed) remain an elevated-risk pocket; data already synced/exfiltrated before rollout completes is unrecoverable leverage for double extortion"
+      ],
+      "human_review_notes": "Confirm Defender for Business eligibility (hard cap at 300 seats \u2014 at 200 they qualify, but check headcount growth plans; past 300 the fallback is Defender for Endpoint P2 add-on at ~$5.20/user/mo, roughly doubling license cost) and get current CSP pricing rather than list price. Verify the fleet OS mix \u2014 the plan and person-weeks assume mostly Windows; Macs change tooling and effort. Pressure-test the local-admin removal with Engineering leadership before committing a date: 60 engineers who compile and install tooling daily are the failure mode, so decide up front between a documented exception group (free, weaker) and Intune EPM (~$2.6k/yr, cleaner audit story). Check that CA enforcement is sequenced after an exception path for contractors/executives exists, or day one will be an outage. Confirm OneDrive Known Folder Move and versioning storage headroom against the tenant's SharePoint quota. Finally, align the enforcement milestones with the SOC 2 Type I evidence window (~6 months out): auditors need the controls operating, not just designed, so CA enforcement and EDR coverage should land at least 6-8 weeks before fieldwork."
+    },
+    "feasibility": {
+      "risk_id": "R4",
+      "verdict": "approve_with_changes",
+      "concerns": [
+        "Capacity math is the real constraint, not the license cost: after SOC 2 eats ~20%, I have roughly 1.6 FTE of sysadmin time for this PLUS all BAU helpdesk for 200 remote users. 8 person-weeks of project effort is the optimistic pure-work number; calendar time will be 4-5 months, which collides directly with the 'enforce 6-8 weeks before Type I fieldwork' requirement.",
+        "Enrolling the unmanaged ~40% (~80 laptops) is user-driven and remote \u2014 expect weeks of chasing, executives who never enroll, and a nonzero count of devices that turn out to be personal/BYOD with no clean enrollment path. CA enforcement day will lock out at least one VP mid-quarter unless the exception process is battle-tested first.",
+        "Local-admin removal for 60 engineers is the political failure mode. The 'documented exception group' fallback will swallow the control (engineers will all claim need), so Intune EPM (~$2.6k/yr) is effectively mandatory, not optional \u2014 budget it as such and get CTO sign-off BEFORE announcing dates, or this stalls the whole package.",
+        "Defender for Business with AIR set to Full will auto-isolate false positives on remote workers' laptops with no local IT to walk over to \u2014 that is an after-hours pager event for my team. The '30-minute daily portal check' is also a new permanent ~3 hrs/week ops commitment that appears nowhere in the effort estimate.",
+        "The 'Autopilot rebuild in under half a day' claim quietly assumes hardware hashes are registered and all line-of-business apps are packaged in Intune. App packaging alone is a multi-week project for a fleet this messy; it is uncosted here.",
+        "ASR rules in block mode after only a 2-day audit window will break developer tooling and LoB installers, generating a helpdesk surge my 2 sysadmins absorb. Engineers need 2-4 weeks of audit-mode data before block mode.",
+        "CA 'all users, all cloud apps, require compliant device' has known sharp edges: mobile phones (need a separate app-protection-policy grant for iOS/Android or phones brick), contractors, conference-room devices, and the break-glass account must be excluded or a misconfiguration locks the tenant \u2014 including us \u2014 out.",
+        "Recovery caveats: SharePoint 'Restore this library' is a 30-day window; ransomware discovered after a long dwell (which the residual-gaps section itself admits is possible with no SIEM) is unrecoverable via this path. Versioning also inflates SharePoint storage against tenant quota \u2014 possible storage add-on cost.",
+        "Licensing traps are mostly handled (DfB 300-seat cap flagged, E3 P1 correctly identified), but EPM is sold via Intune Suite/add-on channels with pricing that moves \u2014 get CSP quotes in writing, and confirm macOS share in week 1 because a meaningful Mac fleet adds 2-3 person-weeks and changes onboarding tooling."
+      ],
+      "required_changes": [
+        "Re-baseline effort to L / ~12 person-weeks with an explicit 4-5 month calendar plan, and add the permanent ops line item (~3 hrs/week EDR triage rota + monthly compliance report) to the team's standing workload before approval.",
+        "Move EPM from 'optional' to budgeted-mandatory for the 60 engineers (~$2.6k/yr) and require CTO written sign-off on the local-admin removal date before any user communication goes out.",
+        "Reorder the rollout so the CA app-enforced-restrictions quick win (browser-only, no download/no sync for unmanaged devices) ships in week 1 as the interim compensating control \u2014 it breaks the R4 sync-encryption path immediately and decouples risk reduction from hitting 100% enrollment.",
+        "Extend the CA report-only phase from 2 to 4 weeks and phase enforcement by cohort: IT first, then non-engineering staff, engineers last; add explicit CA handling for mobile (require app protection policy for iOS/Android), an excluded break-glass account, and a documented contractor/BYOD exception path before enforcement day.",
+        "Extend ASR audit mode to 2-4 weeks for the engineering cohort (2 days is fine for non-technical staff only), with a named rollback procedure per rule.",
+        "Cut Autopilot full zero-touch rebuild from this package: replace with Intune remote wipe + a documented manual rebuild checklist now, and spin Autopilot/app-packaging off as a separate later project. Keep the runbook, tabletop, and live Files Restore test \u2014 those are the cheap high-value pieces.",
+        "Set AIR to Full for workstations but define and communicate the false-positive un-isolation procedure (who can release a device, on what SLA) before onboarding, so an auto-isolated sales laptop at 7pm is a 15-minute fix, not an escalation."
+      ],
+      "adjusted_effort": {
+        "tshirt": "L",
+        "person_weeks": 12,
+        "cost_estimate_usd": "$12k-22k/yr: Defender for Business ~$7.2k/yr + Intune EPM ~$2.6k/yr treated as mandatory + SharePoint storage/versioning headroom and CSP pricing contingency; plus ~12 person-weeks internal labor over a 4-5 month calendar and a permanent ~3 hrs/week EDR triage commitment. No consultants, but assume a helpdesk-surge buffer during CA enforcement and local-admin removal."
+      },
+      "sequencing_note": "This lands second, immediately after R1 (phishing-resistant MFA / authentication strengths), and the two must share one Conditional Access change window \u2014 building CA policies, exception groups, and break-glass handling once for both saves roughly 2 person-weeks and spares users two separate lockout-risk events. Run the R4 quick wins (tamper protection, app-enforced restrictions, versioning + Files Restore test) in weeks 1-2 in parallel with SOC 2 evidence collection, since those tests ARE CC7.4/CC7.5 evidence. Hard deadline: CA enforcement and EDR coverage must be operating by end of month 4 to give the auditor 6-8 weeks of operating evidence before Type I fieldwork \u2014 anything slipping past month 4 gets descoped, not delayed. Local-admin removal for engineers goes last within this package, after EDR is watching. The contractor-PostgreSQL and Azure-side backup/immutability packages (R3/R5) can run concurrently only if they are engineer-owned, because this package fully consumes both sysadmins; do not schedule any other IT-team-delivered mitigation in the same window."
+    }
+  },
+  {
+    "risk_id": "R5",
+    "rank": 5,
+    "mitigation": {
+      "risk_id": "R5",
+      "strategy_summary": "Collapse the six manual revocation points (Entra, ~15 SSO apps, Azure, GitHub, direct Postgres, M365) into one: the Entra ID account. First eliminate the out-of-band contractor Postgres logins by switching human database access to Microsoft Entra authentication, so disabling one account kills production data access. Then automate the leaver moment with an Entra Lifecycle Workflow (block sign-in, revoke tokens, strip groups/app assignments) and SCIM deprovisioning to downstream apps. Backstop with cheap dormant-account and post-departure-login detection in Log Analytics plus quarterly access reviews, and wrap it in a documented JML policy so every departure generates SOC 2 Type I evidence automatically. Nothing here needs a security hire; steady-state effort for a 3-person IT team is reviewing one workflow log and one quarterly review.",
+      "primary_control": "Entra ID as the single revocation point: Microsoft Entra authentication on Azure Database for PostgreSQL Flexible Server (no standing local passwords for humans) chained to an Entra ID Governance Lifecycle Workflows \"leaver\" automation that disables the account, revokes sessions, and removes all group/app assignments on the termination date",
+      "controls": [
+        {
+          "name": "Entra-only human authentication to production PostgreSQL",
+          "type": "preventive",
+          "description": "Enable Microsoft Entra authentication on the PostgreSQL Flexible Server; map contractors and engineers to pgaadauth roles via an Entra security group; drop or expire (ALTER ROLE ... VALID UNTIL) every local password login held by a human. Tokens are 60-90 min, so a departed contractor's access dies the moment the Entra account is disabled - no ticket needed. The application keeps its own credential (ideally migrated to managed identity, but that is R3/R4 scope).",
+          "azure_m365_feature": "Azure Database for PostgreSQL Flexible Server - Microsoft Entra authentication + Entra security-group role mapping (no extra license)"
+        },
+        {
+          "name": "Automated leaver workflow with SCIM deprovisioning",
+          "type": "preventive",
+          "description": "Entra ID Governance Lifecycle Workflow triggered on employeeLeaveDateTime: block sign-in, revoke refresh tokens (revokeSignInSessions), remove all group memberships and enterprise-app assignments, notify IT. Configure SCIM provisioning/deprovisioning from Entra to the downstream SaaS apps that support it (most of the 15 will), and to GitHub via Entra SAML SSO + SCIM (requires GitHub Enterprise Cloud). Every workflow run is timestamped evidence of deprovisioning for the auditor. Budget fallback: an HR-ticket-triggered Logic App/PowerShell runbook doing the same Graph calls costs near-zero but produces weaker evidence.",
+          "azure_m365_feature": "Microsoft Entra ID Governance - Lifecycle Workflows + Entra enterprise-app SCIM provisioning (requires Entra ID Governance add-on to E3; GitHub SCIM requires GitHub Enterprise Cloud)"
+        },
+        {
+          "name": "Dormant-account and post-departure access detection",
+          "type": "detective",
+          "description": "Ship PostgreSQL connection/pgaudit logs and Entra sign-in logs to a small Log Analytics workspace. Two scheduled KQL alerts to the IT shared mailbox/Teams: (1) any sign-in or DB connection by an account flagged as departed or unused >30 days; (2) monthly stale-account report (Entra lastSignInDateTime >30 days, and pg roles with no connections) that IT disables by default. This is the compensating detection for anything the workflow misses - no SIEM required.",
+          "azure_m365_feature": "Azure Monitor / Log Analytics (PostgreSQL Flexible Server diagnostic settings + Entra sign-in log export) with scheduled query alerts"
+        },
+        {
+          "name": "Quarterly access reviews of privileged and external access",
+          "type": "administrative",
+          "description": "Quarterly Entra Access Reviews scoped to the groups that matter: the Postgres-access group, Azure subscription RBAC roles, GitHub SCIM group, and all guest/contractor accounts - reviewed by the IT Manager with Head of Engineering as second reviewer, auto-remove on no response. Scoping to ~70-80 privileged/external users keeps licensing small and gives the auditor recurring recertification evidence (the classic SOC 2 ask).",
+          "azure_m365_feature": "Microsoft Entra ID Access Reviews (included in the Entra ID Governance add-on; otherwise Entra ID P2 for reviewed users)"
+        },
+        {
+          "name": "Emergency revocation and post-departure forensics runbook",
+          "type": "corrective",
+          "description": "One-page runbook for hostile or missed departures: disable account + revokeSignInSessions via Graph, force-expire any surviving pg role, invalidate GitHub sessions/PATs, remove Azure RBAC, then query Log Analytics for all sign-ins and DB connections by that identity since the departure date to scope what was touched. Turns the '$100-500k external forensics' scenario into an afternoon of KQL. Test it once per quarter on a real leaver and file the output as evidence.",
+          "azure_m365_feature": "Microsoft Graph PowerShell (Revoke-MgUserSignInSession, Update-MgUser) + Log Analytics KQL queries; documented in the JML/offboarding policy"
+        }
+      ],
+      "owner": "IT Manager (with Head of Engineering as co-owner for the PostgreSQL Entra-auth migration and GitHub changes)",
+      "effort": {
+        "tshirt": "M",
+        "person_weeks": 6,
+        "cost_estimate_usd": "$8k-35k/yr. Main variables: Entra ID Governance add-on ~$7/user/mo (~$17k/yr if licensed for all ~200; ask Microsoft about scoping) vs. the near-free Logic App leaver-script + Entra ID P2 licensed only for the ~80 reviewed users (~$8.6k/yr); optional GitHub Enterprise Cloud uplift for SAML/SCIM ~$12k/yr for 60 devs (Team plan is ~$4/user vs Enterprise ~$21/user); Log Analytics ingestion for sign-in + Postgres logs <$1.5k/yr. Postgres Entra auth itself costs nothing."
+      },
+      "quick_wins": [
+        "Reconcile the HR roster against Entra users, Azure RBAC, GitHub org members, and pg_roles this week; disable/drop everything belonging to departed people and screenshot the before/after as SOC 2 evidence (1-2 days)",
+        "Run ALTER ROLE ... VALID UNTIL on every human PostgreSQL account so no login survives more than 30 days without renewal, and rotate any contractor passwords that were shared (half a day)",
+        "Set employeeLeaveDateTime / account expiration on every current contractor's Entra account so access self-destructs at contract end even if the ticket is missed (half a day)",
+        "Turn on PostgreSQL Flexible Server connection logging + diagnostic export to Log Analytics and create one alert for connections by roles unused >30 days (1 day)",
+        "Publish a named-systems offboarding checklist (Entra, Azure RBAC, GitHub, Postgres, each of the 15 SaaS apps) as a mandatory ticket template with a 24-hour SLA - immediate administrative fix while automation is built (1 day)"
+      ],
+      "soc2_criteria": [
+        "CC6.1",
+        "CC6.2",
+        "CC6.3",
+        "CC7.2",
+        "CC9.2"
+      ],
+      "residual_gaps": [
+        "Pre-departure exfiltration: a leaver who exports data or clones repos while access is still legitimate is untouched by revocation; local git clones and knowledge already taken cannot be recalled",
+        "Application-layer secrets: the app's own DB connection string (and historical .env copies in repos) still work for anyone who memorized them - that is R3/R4 secret-rotation scope, not fixed here",
+        "Downstream SaaS apps without SCIM (and any app allowing local-password login that bypasses SSO) still need manual removal from the checklist",
+        "If GitHub stays on the Team plan, org removal remains manual and outstanding personal access tokens survive until expiry",
+        "Detection is targeted alerting, not behavioral analytics - an active employee's account misuse or subtle low-volume queries won't trip the dormant-account rules (no SIEM/UEBA in scope)",
+        "Break-glass, service, and shared accounts sit outside the leaver workflow and rely on the quarterly review only",
+        "Phishable Authenticator-push MFA on live accounts is a separate risk (Conditional Access / authentication strengths), not addressed by this package"
+      ],
+      "human_review_notes": "Verify before funding: (1) Entra ID Governance licensing - confirm current per-user price and whether Microsoft requires licensing all users or only governed ones; if the ~$17k/yr is unpalatable, the Logic App/PowerShell leaver runbook plus P2 scoped to ~80 reviewed users delivers ~90% of the value for ~$8.6k, at the cost of hand-built audit evidence. (2) GitHub plan: confirm whether they are on Team or already Enterprise; the ~$12k/yr SSO/SCIM uplift is the most deferrable line item - manual GitHub removal with the checklist is acceptable short-term. (3) Postgres Entra auth: confirm contractor tooling (psql, DBeaver, ORM consoles) handles AAD token auth and the ~60-90 min token lifetime without workflow revolt, and that the application's own connection path is untouched; pilot with 2-3 users first. (4) HR trigger: there is likely no Workday/SuccessFactors connector, so employeeLeaveDateTime will be set manually by IT on hire/contract start - confirm HR will reliably notify IT of end dates, since the whole automation keys off that field. (5) Ask the SOC 2 auditor early what deprovisioning evidence format they expect (workflow logs vs. tickets) so the Type I sample period starts clean. (6) Sanity-check Log Analytics ingestion volume once Postgres logging is on - chatty connection logs can surprise on cost; cap with daily quota."
+    },
+    "feasibility": {
+      "risk_id": "R5",
+      "verdict": "approve_with_changes",
+      "concerns": [
+        "Effort is understated for this team: 6 person-weeks assumes uninterrupted focus, but my 3-person team is already losing ~20% to SOC 2 prep and runs interrupt-driven. SCIM onboarding for '~15 apps' alone is weeks of vendor-by-vendor attribute mapping, tier upgrades, and testing \u2014 the package treats it as one line item.",
+        "'Most of the 15 will support SCIM' is optimistic and hides cost: many SaaS vendors gate SCIM (and sometimes SSO enforcement) behind enterprise tiers. Nobody has priced those uplifts; they could add $5-10k/yr that isn't in the $8k-35k range.",
+        "GitHub Enterprise Cloud is a project, not a line item: moving 60 devs to SAML/SCIM (or EMU) mid-SOC2-prep risks breaking CI/CD (the same GitHub Actions pipelines R3/R4 touch), and existing PATs/deploy keys survive the migration anyway. Also $21/user/mo x 60 is ~$15k/yr, not $12k.",
+        "Postgres Entra auth token lifetime (~60-90 min) will break long-running contractor sessions, DBeaver/psql workflows, and anything with naive connection handling \u2014 expect a support-ticket tail landing on my two sysadmins. Group-mapped pgaadauth roles also have permission-inheritance quirks that need testing.",
+        "The whole leaver automation keys off employeeLeaveDateTime, which will be set MANUALLY by IT because there is no HRIS connector. That just relocates the manual failure point the package claims to eliminate \u2014 a missed HR notification produces exactly the dormant account we started with, now with false confidence.",
+        "Access review 'auto-remove on no response' scoped to the Postgres-access group and Azure RBAC can lock engineers out of production if the Head of Engineering is on PTO during the review window \u2014 that's a self-inflicted outage risk.",
+        "Detection alerts go to a shared mailbox/Teams channel with no named owner or triage rotation; on a team of 3 that becomes wallpaper within a month.",
+        "For SOC 2 Type I (point-in-time design assessment), the heavy automation is not actually required \u2014 a documented, evidenced offboarding checklist with SLA satisfies Type I. The package risks spending the pre-audit window building automation the auditor doesn't need until the Type II observation period.",
+        "Postgres connection/pgaudit log ingestion cost is acknowledged but not capped by default \u2014 chatty app connection pools can generate surprising Log Analytics bills."
+      ],
+      "required_changes": [
+        "Split into three phases with a hard gate. Phase 1 (weeks 1-2, before anything else): all five quick wins \u2014 HR-roster-to-Entra/GitHub/pg_roles reconciliation, ALTER ROLE VALID UNTIL on human DB accounts, contractor account expirations, connection-log alerting, and the named-systems offboarding checklist with 24h SLA. The checklist becomes the Type I control of record. Phase 2 (pre-audit): Postgres Entra-auth pilot with 2-3 named contractors for 2 weeks (validate DBeaver/psql/ORM tooling and token-lifetime ergonomics) before any forced cutover; keep one break-glass local pg admin in a vault. Phase 3 (post-Type I / Type II runway): Lifecycle Workflows + SCIM.",
+        "Cut SCIM scope from ~15 apps to the 4-6 downstream apps that actually touch customer data or production; the rest stay on the manual checklist. Require vendor tier/pricing quotes for those apps before committing the budget number.",
+        "Defer GitHub Enterprise Cloud entirely for now. Substitute a scheduled script (GitHub API) that reconciles org members against the HR roster weekly and flags/removes leavers, plus an org-level PAT max-lifetime policy. Revisit Enterprise when R3/R4 GitHub Actions work happens so we only disrupt CI/CD once.",
+        "Take the budget licensing path as the baseline, not the fallback: Logic App/Graph leaver runbook triggered by the HR ticket + Entra ID P2 scoped to the ~80 reviewed users (~$8.6k/yr). Upgrade to the full Governance add-on only if Microsoft confirms scoped licensing at an acceptable price in writing.",
+        "Because employeeLeaveDateTime is manually maintained, add a compensating weekly automated reconciliation of the HR roster against enabled Entra accounts (a 50-line script) \u2014 this is the actual safety net, make it a named control, not an afterthought.",
+        "Change access-review fallback for the Postgres-access group and Azure RBAC from auto-remove to escalate-to-IT-Manager; keep auto-remove for guest/contractor accounts only.",
+        "Set a Log Analytics daily ingestion cap on day one and exclude application-pool connection chatter from pgaudit scope (log human/contractor roles only).",
+        "Assign a named weekly rotation (me + 2 sysadmins) for alert triage and put the quarterly runbook test on the calendar now with the SOC 2 evidence folder as its output location."
+      ],
+      "adjusted_effort": {
+        "tshirt": "L",
+        "person_weeks": 9,
+        "cost_estimate_usd": "$10k-30k/yr recurring on the phased plan: Entra P2 for ~80 reviewed users ~$8.6k (baseline) or Governance add-on up to ~$17k; Log Analytics $1.5-3k with quota cap; SaaS SCIM/SSO tier uplifts for 4-6 priority apps, unpriced today, budget $0-8k; GitHub Enterprise (~$15k/yr, not $12k) deferred out of this package. One-time labor ~9 person-weeks spread over 4-5 calendar months given SOC 2 load and interrupts \u2014 Phase 1 quick wins are ~1 week and near-zero dollars."
+      },
+      "sequencing_note": "Phase 1 quick wins jump the queue: the roster reconciliation and contractor Postgres cleanup are days of work, close a live hole, and generate the cheapest SOC 2 evidence of any of the five packages \u2014 do them in week 1 regardless of other priorities. The documented offboarding checklist is what the Type I auditor actually samples, so it must exist well before the audit date; the Lifecycle Workflow/SCIM automation is Type II material and belongs after Type I, when the observation window starts. Relative to the other four mitigations: this lands second overall \u2014 behind phishing-resistant MFA/Conditional Access (which protects live accounts, a bigger attack surface than dormant ones, and which this package explicitly leans on), but ahead of EDR/Intune completion and WAF work. Critically, the Postgres Entra-auth migration and any GitHub plan change must be co-scheduled with the R3/R4 secrets/service-principal/managed-identity work \u2014 they touch the same connection strings and the same GitHub Actions pipelines, and I refuse to destabilize CI/CD twice. Budget roughly one sysadmin at 50% for a quarter, with my two other packages time-sliced around it."
+    }
+  }
+]

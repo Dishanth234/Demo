@@ -1,0 +1,309 @@
+<title>Meridian Desk — Risk Prioritization Dashboard</title>
+<style>
+  :root {
+    --ink: #1d2a32;
+    --ink-soft: #46565f;
+    --ink-faint: #74848c;
+    --paper: #f4f6f6;
+    --card: #ffffff;
+    --line: #d8dfdf;
+    --accent: #136572;
+    --accent-soft: #e3eeef;
+    --crit: #ac3a2e;
+    --crit-bg: #f7e9e7;
+    --high: #bc7b26;
+    --high-bg: #f8efe0;
+    --good: #377142;
+    --good-bg: #e7f1e9;
+    --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans); margin: 0; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; display: flex; flex-direction: column; gap: 28px; }
+
+  header .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  header h1 { font-size: 26px; margin: 6px 0 4px; font-weight: 600; text-wrap: balance; }
+  header .meta { color: var(--ink-faint); font-size: 13px; }
+  header .meta code { font-family: var(--mono); font-size: 12px; }
+
+  section > h2 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; margin: 0 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  section .note { font-size: 13px; color: var(--ink-soft); line-height: 1.55; max-width: 72ch; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .kpi .label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+  .kpi .value { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 26px; font-weight: 600; }
+  .kpi .sub { font-size: 12px; color: var(--ink-soft); line-height: 1.45; }
+  .kpi.crit { border-top: 3px solid var(--crit); }
+  .kpi.base { border-top: 3px solid var(--ink-soft); }
+  .kpi.resid { border-top: 3px solid var(--good); }
+  .kpi.lever { border-top: 3px solid var(--accent); }
+  .kpi .value .down { color: var(--good); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+  .panel h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+  .panel .sub { font-size: 12px; color: var(--ink-faint); margin: 0 0 10px; line-height: 1.45; }
+  .panel svg { display: block; width: 100%; height: auto; }
+
+  .chip { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .chip.crit { background: var(--crit-bg); color: var(--crit); }
+  .chip.high { background: var(--high-bg); color: var(--high); }
+  .chip.ok   { background: var(--good-bg); color: var(--good); }
+  .chip.warn { background: var(--high-bg); color: var(--high); }
+  .chip.info { background: var(--accent-soft); color: var(--accent); }
+
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th { text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.45; }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .risk-id { font-family: var(--mono); font-weight: 600; color: var(--accent); }
+  td .owner { color: var(--ink-soft); font-size: 12px; }
+
+  .flags { display: flex; flex-direction: column; gap: 10px; }
+  .flag { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--high); border-radius: 4px; padding: 10px 14px; font-size: 13px; line-height: 1.5; }
+  .flag .src { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--ink-faint); margin-right: 8px; }
+  .flag.standing { border-left-color: var(--crit); background: #fffdfc; }
+
+  footer { font-size: 12px; color: var(--ink-faint); line-height: 1.6; border-top: 1px solid var(--line); padding-top: 14px; max-width: 80ch; }
+  a { color: var(--accent); }
+  @media (prefers-reduced-motion: no-preference) {
+    .kpi, .panel, .flag { transition: border-color .15s ease; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Agentic risk prioritization · executed pipeline run</div>
+    <h1>Meridian Desk — Security Risk Dashboard</h1>
+    <div class="meta">200-employee SaaS on Azure + M365 · 24 agents · 3 scoring lenses · framework <code>FAIR-lite (L×I)</code> · all arithmetic deterministic · run <code>wf_b05c4f43</code></div>
+  </header>
+
+  <section class="kpis" aria-label="Summary">
+    <div class="kpi crit">
+      <div class="label">Top risk</div>
+      <div class="value">R3 · 17.6</div>
+      <div class="sub"><strong>Leaked CI/CD &amp; cloud secrets → Azure subscription compromise.</strong> Upheld 1–1 on adversarial challenge (dissent: R1) — treat R3 + R1 as the top tier.</div>
+    </div>
+    <div class="kpi base">
+      <div class="label">Baseline P(breach, 12 mo)</div>
+      <div class="value">65.7%</div>
+      <div class="sub">Mode estimate; scenario bounds 35.8–91.2%. Independence assumption biases this up.</div>
+    </div>
+    <div class="kpi resid">
+      <div class="label">Residual, all 5 mitigations</div>
+      <div class="value"><span class="down">25.5%</span></div>
+      <div class="sub">−40.2 pp absolute, −61.2% relative. Bounds 6.3–65.6%.</div>
+    </div>
+    <div class="kpi lever">
+      <div class="label">Biggest single lever</div>
+      <div class="value">R1 · −11.7 pp</div>
+      <div class="sub">Phishing-resistant MFA moves the aggregate most on its own — sequencing ≠ ranking.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Prioritization — likelihood × impact, median of 3 blind lenses</h2>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Risk matrix</h3>
+        <p class="sub">L = (TEF + VULN)/2 · I = 0.6·primary + 0.4·secondary · bubble area ∝ composite</p>
+        <div id="matrix"></div>
+      </div>
+      <div class="panel">
+        <h3>Ranking</h3>
+        <p class="sub">Composite = L × I (max 25). No scorer-disagreement flags fired (factor spread &lt; 2 everywhere).</p>
+        <div class="tablewrap">
+          <table id="ranktable">
+            <thead><tr><th>#</th><th>Risk</th><th>L</th><th>I</th><th>Score</th><th>Tier</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="sub" style="margin-top:10px">Adversarial challenge of #1: <span class="chip ok">impact — upheld (high conf.)</span> <span class="chip warn">likelihood — refuted → R1 (medium conf.)</span></p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Quantified reduction — residual = baseline × (1 − effectiveness)</h2>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Baseline → residual per risk</h3>
+        <p class="sub">Annual probability of a material incident (&gt;$25k IR or notification duty). Dot pair = mode; faint bands = low–high scenario ranges.</p>
+        <div id="dumbbell"></div>
+      </div>
+      <div class="panel">
+        <h3>Marginal contribution of each mitigation alone</h3>
+        <p class="sub">Drop in aggregate P(breach) if only that one mitigation is implemented — the number that should drive sequencing.</p>
+        <div id="marginal"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Mitigations — control · owner · effort (feasibility-adjusted)</h2>
+    <p class="note" style="margin-bottom:10px">All five packages returned <span class="chip warn">approve with changes</span> from the IT-feasibility reviewer — architect estimates ran ~40–50% optimistic on effort and missed licensing traps. Figures below are the adjusted ones.</p>
+    <div class="panel tablewrap">
+      <table id="mittable">
+        <thead><tr><th>Risk</th><th>Primary control</th><th>Owner</th><th>Effort</th><th>Annual cost</th><th>SOC 2</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where not to trust this — flags raised by the pipeline itself</h2>
+    <div class="flags">
+      <div class="flag standing"><span class="src">Standing</span>Every numeric parameter (baselines, effectiveness, prices) is an LLM estimate from model memory. Validate against current DBIR/IBM editions, real Azure/M365/GitHub quotes, and the company's own telemetry before budget or board use.</div>
+      <div class="flag"><span class="src">Red team</span>The five baselines jointly imply ~65% annual incident probability — high vs. SMB base rates; and one shared infostealer event drives both R3 and R4 (double counting), so the independence formula overstates the aggregate.</div>
+      <div class="flag"><span class="src">Red team</span>R3's and R5's estimates assumed contradictory states of the same control (Postgres Entra-auth deferred vs. completed). R5 was auto-revised (baseline 8→10%, effectiveness 65→57%); cross-risk issues remain human work.</div>
+      <div class="flag"><span class="src">Challenge</span>One challenger refuted R3's #1 rank on a TEF/VULN conditioning mismatch, proposing R1. Within 2.3 composite points — a human should adjudicate; funding both is the robust read.</div>
+      <div class="flag"><span class="src">Feasibility</span>Correlated under-delivery: all five effectiveness estimates assume full implementation by one 3-person IT team that is also running SOC 2. Slippage hits every residual at once.</div>
+    </div>
+    <p class="note" style="margin-top:10px">23 auto-collected flags + 9 red-team issues in total — full list in <code>HUMAN_REVIEW_FLAGS.md</code>.</p>
+  </section>
+
+  <footer>
+    Fictional scenario ("Meridian Desk") for a risk-prioritization assessment. Pipeline: register validation → 3-lens scoring panel → deterministic aggregation → adversarial challenge → mitigation + feasibility review → blind quant estimation → red-team → revision → deterministic model → synthesis. Prompts, schemas, orchestration code, and raw JSON outputs live alongside this file in the repository.
+  </footer>
+</div>
+
+<script>
+(function () {
+  const RISKS = [
+    { id: 'R3', rank: 1, name: 'Leaked CI/CD & cloud secrets → Azure subscription compromise', L: 4.0, I: 4.4, score: 17.6, tier: 'Critical',
+      b: [8, 20, 40], e: [45, 70, 85], r: [1.2, 6.0, 22], marg: 6.0,
+      control: 'GitHub Actions OIDC federation to Entra ID — delete long-lived SP secrets; Secret Protection, Key Vault, least-privilege RBAC, immutable backups',
+      owner: 'Head of Engineering (+IT Manager)', effort: 'L · 13 pw', cost: '$15k–32k', soc2: 'CC6.1–6.3, 6.6, 7.1–7.4, 8.1, A1.2' },
+    { id: 'R1', rank: 2, name: 'AiTM phishing → M365 account takeover', L: 4.5, I: 3.4, score: 15.3, tier: 'High',
+      b: [15, 30, 55], e: [60, 80, 92], r: [1.2, 6.0, 22], marg: 11.7,
+      control: 'Phishing-resistant MFA (passkeys/FIDO2) via Conditional Access authentication strengths; hardware keys for admins & finance',
+      owner: 'IT Manager', effort: 'L · 12 pw', cost: '$40k–58k yr-1', soc2: 'CC6.1, 6.6–6.7, 7.2–7.4' },
+    { id: 'R2', rank: 3, name: 'Web app exploitation → PostgreSQL exfiltration', L: 4.0, I: 3.8, score: 15.2, tier: 'High',
+      b: [8, 20, 40], e: [45, 65, 80], r: [1.6, 7.0, 22], marg: 5.5,
+      control: 'Azure WAF (Prevention mode) + CodeQL/Dependabot gates + least-privilege DB role + PostgreSQL row-level security + annual pen test',
+      owner: 'Head of Engineering (IT executes WAF)', effort: 'L · 18 pw', cost: '$45k–75k yr-1', soc2: 'CC6.1, 6.6, 7.1–7.4, 8.1' },
+    { id: 'R4', rank: 4, name: 'Ransomware via unmanaged remote endpoints', L: 3.5, I: 3.6, score: 12.6, tier: 'High',
+      b: [8, 15, 30], e: [45, 65, 80], r: [1.6, 5.25, 16.5], marg: 3.9,
+      control: 'Conditional Access compliant-device gating (Intune → ~100%) + Defender for Business EDR + local-admin removal (LAPS/EPM)',
+      owner: 'IT Manager (CTO signs dates)', effort: 'L · 12 pw', cost: '$12k–22k', soc2: 'CC6.1, 6.6, 6.8, 7.2–7.5' },
+    { id: 'R5', rank: 5, name: 'Offboarding gaps / dormant access to production data', L: 3.5, I: 3.4, score: 11.9, tier: 'High',
+      b: [3, 10, 22], e: [40, 57, 72], r: [0.84, 4.3, 13.2], marg: 2.1,
+      control: 'Entra ID as single revocation point: Entra auth on PostgreSQL, SCIM for priority SaaS, automated leaver workflow, quarterly access reviews',
+      owner: 'IT Manager (+Head of Eng)', effort: 'L · 9 pw', cost: '$10k–30k', soc2: 'CC6.1–6.3, 7.2, 9.2' },
+  ];
+  const C = { crit: '#ac3a2e', high: '#bc7b26', good: '#37714f', ink: '#1d2a32', faint: '#74848c', line: '#d8dfdf', accent: '#136572' };
+  const tierColor = t => t === 'Critical' ? C.crit : C.high;
+  const svgEl = (tag, attrs, text) => {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    if (text != null) el.textContent = text;
+    return el;
+  };
+  const font = '12px ui-monospace, Menlo, monospace';
+
+  // ---- Risk matrix ----
+  (function matrix() {
+    const W = 460, H = 340, m = { l: 44, r: 16, t: 12, b: 40 };
+    const x = v => m.l + (v - 1) / 4 * (W - m.l - m.r);
+    const y = v => H - m.b - (v - 1) / 4 * (H - m.t - m.b);
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Risk matrix: likelihood vs impact' });
+    for (let v = 1; v <= 5; v++) {
+      svg.appendChild(svgEl('line', { x1: x(v), y1: y(1), x2: x(v), y2: y(5), stroke: C.line, 'stroke-width': 1 }));
+      svg.appendChild(svgEl('line', { x1: x(1), y1: y(v), x2: x(5), y2: y(v), stroke: C.line, 'stroke-width': 1 }));
+      svg.appendChild(svgEl('text', { x: x(v), y: H - m.b + 18, 'text-anchor': 'middle', fill: C.faint, style: `font:${font}` }, v));
+      svg.appendChild(svgEl('text', { x: m.l - 10, y: y(v) + 4, 'text-anchor': 'end', fill: C.faint, style: `font:${font}` }, v));
+    }
+    svg.appendChild(svgEl('text', { x: (x(1) + x(5)) / 2, y: H - 6, 'text-anchor': 'middle', fill: C.faint, style: `font:${font}` }, 'likelihood'));
+    svg.appendChild(svgEl('text', { x: 12, y: (y(1) + y(5)) / 2, fill: C.faint, style: `font:${font}`, transform: `rotate(-90 12 ${(y(1) + y(5)) / 2})`, 'text-anchor': 'middle' }, 'impact'));
+    RISKS.forEach(r => {
+      const rad = 6 + (r.score / 25) * 18;
+      svg.appendChild(svgEl('circle', { cx: x(r.L), cy: y(r.I), r: rad, fill: tierColor(r.tier), 'fill-opacity': .18, stroke: tierColor(r.tier), 'stroke-width': 1.5 }));
+      svg.appendChild(svgEl('text', { x: x(r.L), y: y(r.I) + 4, 'text-anchor': 'middle', fill: C.ink, style: `font:600 ${font}` }, r.id));
+    });
+    document.getElementById('matrix').appendChild(svg);
+  })();
+
+  // ---- Ranking table ----
+  (function rank() {
+    const tb = document.querySelector('#ranktable tbody');
+    RISKS.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td class="num">${r.rank}</td>` +
+        `<td><span class="risk-id">${r.id}</span> ${r.name}</td>` +
+        `<td class="num">${r.L.toFixed(1)}</td><td class="num">${r.I.toFixed(1)}</td>` +
+        `<td class="num"><strong>${r.score.toFixed(1)}</strong></td>` +
+        `<td><span class="chip ${r.tier === 'Critical' ? 'crit' : 'high'}">${r.tier}</span></td>`;
+      tb.appendChild(tr);
+    });
+  })();
+
+  // ---- Dumbbell: baseline -> residual ----
+  (function dumbbell() {
+    const W = 460, rowH = 52, m = { l: 44, r: 56, t: 26, b: 30 };
+    const H = m.t + m.b + RISKS.length * rowH;
+    const maxV = 60;
+    const x = v => m.l + v / maxV * (W - m.l - m.r);
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Baseline to residual likelihood per risk' });
+    [0, 15, 30, 45, 60].forEach(v => {
+      svg.appendChild(svgEl('line', { x1: x(v), y1: m.t - 6, x2: x(v), y2: H - m.b, stroke: C.line, 'stroke-width': 1 }));
+      svg.appendChild(svgEl('text', { x: x(v), y: H - m.b + 18, 'text-anchor': 'middle', fill: C.faint, style: `font:${font}` }, v + '%'));
+    });
+    RISKS.forEach((r, i) => {
+      const cy = m.t + i * rowH + rowH / 2;
+      svg.appendChild(svgEl('text', { x: 6, y: cy + 4, fill: C.ink, style: `font:600 ${font}` }, r.id));
+      svg.appendChild(svgEl('rect', { x: x(r.b[0]), y: cy - 13, width: Math.max(1, x(r.b[2]) - x(r.b[0])), height: 7, rx: 3.5, fill: C.faint, 'fill-opacity': .22 }));
+      svg.appendChild(svgEl('rect', { x: x(r.r[0]), y: cy + 6, width: Math.max(1, x(r.r[2]) - x(r.r[0])), height: 7, rx: 3.5, fill: C.good, 'fill-opacity': .22 }));
+      svg.appendChild(svgEl('line', { x1: x(r.r[1]), y1: cy, x2: x(r.b[1]), y2: cy, stroke: C.ink, 'stroke-width': 1.5 }));
+      svg.appendChild(svgEl('circle', { cx: x(r.b[1]), cy: cy, r: 5.5, fill: C.faint }));
+      svg.appendChild(svgEl('circle', { cx: x(r.r[1]), cy: cy, r: 5.5, fill: C.good }));
+      svg.appendChild(svgEl('text', { x: x(r.b[1]) + 9, y: cy - 8, fill: C.faint, style: `font:${font}` }, r.b[1] + '%'));
+      svg.appendChild(svgEl('text', { x: Math.max(x(r.r[1]) - 9, 20), y: cy + 20, 'text-anchor': 'end', fill: C.good, style: `font:600 ${font}` }, r.r[1] + '%'));
+    });
+    svg.appendChild(svgEl('text', { x: W - m.r + 6, y: m.t + 8, fill: C.faint, style: `font:${font}` }, '● base'));
+    svg.appendChild(svgEl('text', { x: W - m.r + 6, y: m.t + 24, fill: C.good, style: `font:${font}` }, '● resid'));
+    document.getElementById('dumbbell').appendChild(svg);
+  })();
+
+  // ---- Marginal contribution bars ----
+  (function marginal() {
+    const sorted = RISKS.slice().sort((a, b) => b.marg - a.marg);
+    const W = 460, rowH = 44, m = { l: 44, r: 70, t: 10, b: 30 };
+    const H = m.t + m.b + sorted.length * rowH;
+    const maxV = 12;
+    const x = v => m.l + v / maxV * (W - m.l - m.r);
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Marginal contribution of each mitigation' });
+    [0, 4, 8, 12].forEach(v => {
+      svg.appendChild(svgEl('line', { x1: x(v), y1: m.t, x2: x(v), y2: H - m.b, stroke: C.line, 'stroke-width': 1 }));
+      svg.appendChild(svgEl('text', { x: x(v), y: H - m.b + 18, 'text-anchor': 'middle', fill: C.faint, style: `font:${font}` }, '−' + v + 'pp'));
+    });
+    sorted.forEach((r, i) => {
+      const cy = m.t + i * rowH + rowH / 2;
+      svg.appendChild(svgEl('text', { x: 6, y: cy + 4, fill: C.ink, style: `font:600 ${font}` }, r.id));
+      svg.appendChild(svgEl('rect', { x: x(0), y: cy - 11, width: Math.max(2, x(r.marg) - x(0)), height: 22, rx: 3, fill: i === 0 ? C.accent : C.accent, 'fill-opacity': i === 0 ? .95 : .45 }));
+      svg.appendChild(svgEl('text', { x: x(r.marg) + 8, y: cy + 4, fill: C.ink, style: `font:600 ${font}` }, '−' + r.marg.toFixed(1) + 'pp'));
+    });
+    document.getElementById('marginal').appendChild(svg);
+  })();
+
+  // ---- Mitigation table ----
+  (function mits() {
+    const tb = document.querySelector('#mittable tbody');
+    RISKS.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td><span class="risk-id">${r.id}</span></td>` +
+        `<td style="max-width:340px">${r.control}</td>` +
+        `<td class="owner">${r.owner}</td>` +
+        `<td class="num">${r.effort}</td>` +
+        `<td class="num">${r.cost}</td>` +
+        `<td class="owner">${r.soc2}</td>`;
+      tb.appendChild(tr);
+    });
+  })();
+})();
+</script>

@@ -1,0 +1,56 @@
+{
+  "risks": [
+    {
+      "id": "R1",
+      "title": "AiTM credential phishing leading to M365/Entra account takeover",
+      "threat_source": "External financially motivated phishing crews using adversary-in-the-middle kits (Evilginx-class) that proxy the real Entra login page and steal session cookies, defeating Authenticator push MFA.",
+      "asset": "Employee Entra ID identities and everything behind them: Exchange Online mail, SharePoint/OneDrive tenant data, and the ~15 downstream SSO SaaS apps, including any admin roles they carry.",
+      "exposure": "200 remote employees; MFA is phishable push with no Conditional Access device-compliance or authentication-strength policies; a 3-person IT team with no SIEM cannot triage sign-in anomalies at scale.",
+      "scenario": "An employee authenticates through a proxied login page and approves the push; the attacker replays the session cookie, sets inbox rules, commits vendor-payment fraud, and bulk-downloads customer data via SharePoint and SSO-connected apps. Distinct from R4: the compromise is of the cloud identity/session, not the endpoint itself."
+    },
+    {
+      "id": "R2",
+      "title": "Public web app exploitation (SQLi/IDOR/CVE) leading to PostgreSQL customer-data exfiltration",
+      "threat_source": "External opportunistic mass scanners and targeted attackers exploiting OWASP-class flaws (SQL injection, IDOR, SSRF) or unpatched framework/library CVEs in the internet-facing multi-tenant app.",
+      "asset": "Business records and PII of ~500k end users across ~1,200 customer orgs in Azure Database for PostgreSQL, plus the app-layer tenant-isolation boundary.",
+      "exposure": "Internet-facing App Service with no WAF; no dedicated security engineer to drive secure-SDLC gates or rapid patching; a single application flaw can cross tenant boundaries in the shared database.",
+      "scenario": "A scanner finds an injectable endpoint or known CVE; the attacker dumps tenant tables through the application's database access and extorts with a published sample, triggering breach notification to ~1,200 customer orgs. Distinct from R3: entry is via a flaw in the app itself, not stolen credentials or pipeline secrets."
+    },
+    {
+      "id": "R3",
+      "title": "Leaked CI/CD and cloud secrets leading to Azure production subscription compromise",
+      "threat_source": "External attackers harvesting live secrets from repository history, infostealer-compromised developer laptops (GitHub PATs, cached tokens), or malicious/compromised GitHub Actions dependencies.",
+      "asset": "The single production Azure subscription: App Service, PostgreSQL connection credentials, Blob Storage including backups, and the GitHub Actions pipeline that deploys to it.",
+      "exposure": "Historical .env files and connection strings committed to private repos; long-lived service-principal secrets with Contributor rights in GitHub Actions; ~60 engineers whose access multiplies leak paths; no dedicated security staff monitoring for secret exposure.",
+      "scenario": "An infostealer on a dev laptop lifts a GitHub PAT; the attacker mines repo history for connection strings, authenticates as the Contributor-level CI service principal, exfiltrates the database and backups, and plants persistence. Distinct from R5: the credentials are stolen by an outsider, not retained by a departed insider."
+    },
+    {
+      "id": "R4",
+      "title": "Ransomware/extortion via unmanaged remote endpoints",
+      "threat_source": "Ransomware affiliates and initial-access brokers delivering infostealers and loaders through malvertising, trojanized installers, and commodity phishing aimed at remote workers' laptops.",
+      "asset": "Employee laptops, cached corporate credentials and Entra tokens, locally synced OneDrive/SharePoint data, and continuity of support, billing, and engineering operations.",
+      "exposure": "~40% of laptops not Intune-enrolled; users commonly local admins; Defender AV on defaults with no EDR and no SIEM, so nobody is watching alerts; remote-first workforce mixes personal use with work devices.",
+      "scenario": "A trojanized installer on an unenrolled laptop escalates via local admin, steals tokens, and encrypts synced SharePoint libraries through the OneDrive client; the 3-person IT team faces multi-day recovery and an extortion demand. Distinct from R1: the foothold is malware on the device, not a phished cloud session."
+    },
+    {
+      "id": "R5",
+      "title": "Offboarding gaps: dormant employee/contractor access to production data",
+      "threat_source": "Departed or departing employees and contractors retaining valid credentials (malicious or negligent), and external attackers credential-stuffing dormant accounts that no one is watching.",
+      "asset": "Production PostgreSQL (direct contractor database accounts), GitHub source code, and customer data reachable via lingering M365/Entra and downstream SaaS access; credibility of the in-progress SOC 2 program.",
+      "exposure": "Offboarding is manual and ticket-driven across Entra, ~15 SSO apps, Azure, GitHub, and direct Postgres accounts; contractors hold standing database logins outside SSO, so a missed ticket leaves working production access indefinitely.",
+      "scenario": "A contractor's engagement ends but their Postgres login survives for months; after a payment dispute they export customer tables \u2014 or an attacker reuses the dormant credential \u2014 with no detection either way. Distinct from R3: access here was legitimately granted and never revoked, not exfiltrated."
+    }
+  ],
+  "validation_notes": [
+    "R2 draft asserted facts not in the profile: a single high-privilege app DB role, no security code review/DAST gate, and multi-week patch latency. These are plausible for a team with no security engineer but are assumptions \u2014 removed from the entry; confirm the app's actual DB role privileges and patch cadence.",
+    "R3 draft asserted 'no secret scanning or rotation' and 'Key Vault used inconsistently' \u2014 neither is in the profile. Removed; verify whether GitHub secret scanning / push protection and Key Vault are actually in use before scoring likelihood.",
+    "R5 draft asserted shared service accounts with non-rotated passwords and no periodic access recertification. The profile confirms manual offboarding and direct contractor DB accounts but is silent on shared accounts and recertification \u2014 removed as facts; both are worth confirming in fieldwork.",
+    "Distinctness check passed with sharpened boundaries: R1 (phished cloud identity/session) vs R4 (endpoint malware); R2 (app-layer flaw) vs R3 (stolen secrets/pipeline) vs R5 (retained legitimate access). Each entry now states its boundary explicitly in the scenario field.",
+    "All five entries kept their original ids and core subjects; only specificity, unsupported facts, and overlap boundaries were changed."
+  ],
+  "coverage_gaps": [
+    "Backup integrity and recoverability: Blob Storage backups live in the same single Azure subscription with no stated immutability, isolation, or restore testing \u2014 a subscription-level compromise (R3) or ransomware event could destroy backups along with production, and RTO/RPO are unvalidated.",
+    "Third-party SaaS vendor breach: a compromise at one of the ~15 downstream SSO apps (or a data processor holding synced customer data) could expose Meridian Desk customer PII with no register entry, monitoring, or vendor-risk process covering it.",
+    "Insider/engineer overexposure to production data: ~60 engineers plus contractors can reach production systems with no SIEM or database audit logging, so deliberate or accidental bulk access by a current (not departed) insider would be invisible \u2014 adjacent to but not covered by R5."
+  ]
+}

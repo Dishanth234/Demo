@@ -1,0 +1,543 @@
+{
+  "lenses": [
+    "threat-intel",
+    "business-impact",
+    "control-environment"
+  ],
+  "scorecards": [
+    {
+      "lens": "threat-intel",
+      "risks": [
+        {
+          "risk_id": "R1",
+          "tef": 5,
+          "tef_reason": "AiTM phishing (Evilginx/EvilProxy, Tycoon/Mamba PhaaS) is near-continuous commodity traffic against any M365 tenant; 200 harvestable mailboxes and public Entra login make attempts effectively daily (>100/yr).",
+          "vuln": 4,
+          "vuln_reason": "Authenticator push is reverse-proxyable and AiTM kits steal the post-MFA session cookie, and with no Conditional Access device-compliance/auth-strength and no SIEM to spot cookie replay, a landed phish reliably becomes a material session takeover (45-70%).",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct loss is IR, forced tenant-wide credential/session resets, and typical BEC vendor-payment fraud, landing in the $100-500k band for a firm this size.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "A hijacked session can bulk-pull SharePoint/OneDrive and SSO-app data, triggering customer notifications, deal loss, and a SOC 2 setback, plausibly $500k-2M."
+        },
+        {
+          "risk_id": "R2",
+          "tef": 5,
+          "tef_reason": "Internet-facing App Service is hit by automated OWASP/CVE mass scanners and opportunistic exploit attempts continuously (>100/yr); an unauthenticated multi-tenant SaaS endpoint is a standing magnet.",
+          "vuln": 3,
+          "vuln_reason": "No WAF and no secure-SDLC owner raise the odds a real SQLi/IDOR/CVE is found, but exploitation-to-material-exfil still depends on an actual flaw existing, putting susceptibility in the 20-45% band rather than near-certain.",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct incident-response, forensics, and remediation of an app-layer breach for a ~$20M ARR firm typically falls in the $100-500k band.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "Dumping the shared PostgreSQL crosses tenant isolation and exposes ~500k PII across ~1,200 B2B orgs, driving mass breach notification, contractual penalties, churn, and SOC 2 collapse, credibly >$2M."
+        },
+        {
+          "risk_id": "R3",
+          "tef": 4,
+          "tef_reason": "Infostealer infections of developer laptops and automated repo/history secret-scanning are among the most prevalent 2024-2025 initial-access vectors; with ~60 engineers and historical .env files this company is a realistic frequent target (10-100/yr).",
+          "vuln": 4,
+          "vuln_reason": "Long-lived Contributor-scoped service-principal secrets plus committed connection strings mean a single harvested live secret yields full prod access, and with no EDR to catch the stealer and no secret-exposure monitoring, an attempt readily becomes an incident (45-70%).",
+          "primary_impact": 4,
+          "primary_impact_reason": "Compromise of the single prod subscription enables exfiltration of the database plus backups and persistence/ransom, with recovery, rebuild, and IR costs in the $500k-2M band.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "Loss of production data and backups is a total-breach scenario for all ~500k end users and ~1,200 orgs, driving notification, fines, mass churn, and destroyed SOC 2 credibility, credibly >$2M."
+        },
+        {
+          "risk_id": "R4",
+          "tef": 4,
+          "tef_reason": "Commodity loaders/infostealers via malvertising, SEO-poisoned installers, and phishing hit remote workers constantly; with ~40% unenrolled laptops and users as local admins, malware reaching a device is a frequent event (10-100/yr).",
+          "vuln": 4,
+          "vuln_reason": "Local-admin users, Defender on defaults, no EDR, and no SIEM mean nobody is watching alerts, so a loader can escalate, steal tokens, and encrypt synced SharePoint/OneDrive with high success (45-70%).",
+          "primary_impact": 4,
+          "primary_impact_reason": "A 3-person IT team facing multi-day recovery of encrypted synced libraries plus an extortion demand and downtime lands in the $500k-2M band.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "Modern affiliates double-extort by stealing data before encryption, so synced corporate/customer data leakage plus operational disruption and reputational hit plausibly reaches $500k-2M."
+        },
+        {
+          "risk_id": "R5",
+          "tef": 3,
+          "tef_reason": "Dormant-access misuse and credential-stuffing of orphaned accounts are real but lower-volume than external mass campaigns; with manual ticket-driven offboarding and standing contractor Postgres logins, missed revocations creating live dormant access occur a few times a year (1-10/yr).",
+          "vuln": 4,
+          "vuln_reason": "Contractor Postgres accounts sit outside SSO/MFA and a missed ticket leaves working prod access indefinitely with no monitoring, so a departed insider or credential-stuffer who targets one has a high chance of undetected material misuse (45-70%).",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct cost of a dormant-credential data export or misuse plus the ensuing IR and forensics falls in the $100-500k band.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "Exported customer tables trigger breach notification and churn, and an offboarding failure directly undercuts the in-progress SOC 2 program, plausibly $500k-2M."
+        }
+      ]
+    },
+    {
+      "lens": "business-impact",
+      "risks": [
+        {
+          "risk_id": "R1",
+          "tef": 5,
+          "tef_reason": "Credential phishing against a 200-person, fully remote M365 tenant is near-continuous; AiTM kits like Evilginx are commoditized in phishing-as-a-service offerings, so proxied-login attempts against Entra tenants of this size occur far more than 100 times a year.",
+          "vuln": 4,
+          "vuln_reason": "Authenticator push is defeated by AiTM session-cookie theft by design, and with no Conditional Access device-compliance or authentication-strength policies there is no compensating control; a 3-person IT team with no SIEM will not catch the anomalous sign-in, so a user who completes the proxied login is compromised at well above coin-flip probability (45-70%).",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct costs are tenant-wide IR/forensics, mailbox and session remediation across 15 SSO apps, and probable BEC/vendor-payment fraud loss; for a single-identity compromise this typically lands in the $100-500k band, since production Azure infrastructure and the SaaS product itself keep running.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "Bulk download of customer PII from SharePoint/SSO-connected apps triggers notification duty to a subset of the 1,200 customer orgs, churn conversations at a $20M ARR base, and a documented identity-control failure mid-SOC 2 that stalls enterprise deals \u2014 plausibly $500k-2M but short of a full 500k-user database breach."
+        },
+        {
+          "risk_id": "R2",
+          "tef": 5,
+          "tef_reason": "Any internet-facing App Service is probed by mass scanners (Shodan-indexed, automated CVE and injection scanning) essentially daily; threat events against this endpoint exceed 100/yr as a baseline of internet exposure.",
+          "vuln": 3,
+          "vuln_reason": "Most automated probes fail against any given app, but with no WAF, no dedicated security engineer, no secure-SDLC gates, and a multi-tenant app where one IDOR/SQLi crosses all tenant boundaries, the chance that the sustained probing pressure finds an exploitable flaw and converts to a material incident sits in the 20-45% band.",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct loss is emergency IR/forensics, hotfix development, possible emergency downtime of the revenue-generating app, and extortion negotiation \u2014 typically $100-500k when the database is read/exfiltrated rather than destroyed.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "A dump of the shared PostgreSQL exposes PII of ~500k end users across all ~1,200 customer orgs: notification at that scale, regulatory exposure, churn and stalled enterprise pipeline against $20M ARR, plus a published extortion sample and a derailed SOC 2 Type I clearly exceed $2M."
+        },
+        {
+          "risk_id": "R3",
+          "tef": 4,
+          "tef_reason": "With ~60 engineers on unmanaged, local-admin laptops, infostealer campaigns (RedLine/Lumma-class) plus continuous automated scanning of leaked tokens and repo secrets generate on the order of 10-100 credible attempts per year at harvesting a usable GitHub PAT or secret.",
+          "vuln": 4,
+          "vuln_reason": "The company confirms live attack paths: historical .env files/connection strings in repo history and long-lived Contributor-scope service-principal secrets in GitHub Actions, with nobody monitoring for secret exposure \u2014 a stolen PAT converts to production access at 45-70% because the secrets are valid, long-lived, and unrotated.",
+          "primary_impact": 4,
+          "primary_impact_reason": "Contributor rights over the single production subscription reach App Service, PostgreSQL, and Blob Storage including backups; recovery from a compromise with planted persistence means subscription-wide credential rotation, rebuild, and multi-day SLA-penalized downtime \u2014 $500k-2M for a $20M ARR single-product company.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "Exfiltration of the production database AND its backups is a full-population breach (500k users, 1,200 orgs) with maximal notification, churn, and deal-loss exposure, and a cloud-governance failure that could reset the SOC 2 timeline \u2014 over $2M."
+        },
+        {
+          "risk_id": "R4",
+          "tef": 5,
+          "tef_reason": "Malvertising, trojanized installers, and commodity phishing hit 200 remote, personal-use-mixed laptops continuously; malware delivery attempts against this workforce comfortably exceed 100 per year.",
+          "vuln": 3,
+          "vuln_reason": "Default Defender AV stops much commodity malware, holding per-attempt conversion below half, but ~40% of laptops are outside Intune, users are local admins, and no EDR/SIEM means nobody responds to what gets through \u2014 putting escalation to a material incident in the 20-45% band.",
+          "primary_impact": 4,
+          "primary_impact_reason": "Token theft plus encryption of synced SharePoint/OneDrive libraries forces multi-day restoration by a 3-person IT team, halting support, billing, and engineering operations, with an extortion demand on top \u2014 $500k-2M in response, recovery, and productivity loss even though the Azure production app itself likely stays up.",
+          "secondary_impact": 3,
+          "secondary_impact_reason": "Customer data cached in mailboxes and synced libraries creates a notification question for some customer orgs and the incident is reportable to the SOC 2 auditor, but it is not a database-wide breach \u2014 churn and reputational cost plausibly land at $100-500k."
+        },
+        {
+          "risk_id": "R5",
+          "tef": 3,
+          "tef_reason": "A 200-employee company with contractor churn sees dozens of departures a year; with manual ticket-driven offboarding across Entra, 15 SSO apps, Azure, GitHub, and out-of-band Postgres logins, several missed or delayed revocations per year (1-10 threat events) is the realistic base rate.",
+          "vuln": 3,
+          "vuln_reason": "Direct contractor Postgres accounts sit outside SSO with no dormant-account review and no detection of anomalous queries, so a surviving credential works indefinitely; still, most departed users never abuse access and credential-stuffing must guess the right account, putting conversion to a material incident at 20-45%.",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct loss is investigation and legal response to insider exfiltration via a legitimate credential \u2014 no downtime or ransomware recovery \u2014 but with no SIEM or query logging, scoping 'what was accessed for how many months' requires expensive external forensics, landing at $100-500k.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "A contractor Postgres login can export multi-tenant customer tables, triggering notification to affected orgs among the 1,200 and churn; an unrevoked-access finding is a classic SOC 2 access-control exception that jeopardizes the Type I audit and pending enterprise deals \u2014 $500k-2M, below the full-population breach band."
+        }
+      ]
+    },
+    {
+      "lens": "control-environment",
+      "risks": [
+        {
+          "risk_id": "R1",
+          "tef": 4,
+          "tef_reason": "Credential phishing against a 200-seat M365 tenant is a constant background threat, and Evilginx-class AiTM kits are now standard in commodity phishing-as-a-service (e.g. Tycoon 2FA, EvilProxy); expect tens of AiTM-capable campaigns reaching inboxes per year even if generic spray is near-continuous.",
+          "vuln": 4,
+          "vuln_reason": "Authenticator push offers no phishing resistance against session-cookie proxying, and there are no Conditional Access device-compliance or authentication-strength policies to reject the attacker's replayed session; with no SIEM, anomalous sign-ins and inbox rules go unreviewed by a 3-person IT team, so a successful lure very likely matures into a material account takeover (45-70%).",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct losses are incident response, mailbox/session forensics across the tenant, and probable vendor-payment (BEC) fraud, which for a company this size typically lands in the $100-500k band rather than causing production downtime.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "A single compromised identity fronts SharePoint/OneDrive and ~15 SSO apps with no data-loss controls, so bulk download of customer PII is plausible, triggering notification to affected customer orgs, churn among the 1,200 tenants, and a SOC 2 Type I setback ($500k-2M)."
+        },
+        {
+          "risk_id": "R2",
+          "tef": 5,
+          "tef_reason": "The App Service is internet-facing with no WAF, so OWASP-class probing and mass CVE scanning (e.g. post-disclosure framework exploits) hit it near-continuously \u2014 well over 100 threat events per year is the norm for any public multi-tenant SaaS endpoint.",
+          "vuln": 2,
+          "vuln_reason": "Absent a WAF, secure-SDLC gates, or a security engineer driving patch SLAs, an exploitable flaw would go unshielded and exploitation undetected (no SIEM, no app-layer alerting); however, each individual scan only becomes a material incident if a matching injectable endpoint or unpatched CVE actually exists, keeping per-attempt susceptibility in the 5-20% band.",
+          "primary_impact": 4,
+          "primary_impact_reason": "A tenant-crossing dump of the shared PostgreSQL database forces full forensic IR, emergency patching, extortion handling, and likely external counsel/DFIR retainers at a firm with no in-house security staff \u2014 realistically $500k-2M direct.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "Exfiltration of PII for ~500k end users requires breach notification across ~1,200 customer B2B orgs, invites regulatory exposure and contractual penalties, and would gut the in-progress SOC 2 program and pipeline deals \u2014 plausibly exceeding $2M against $20M ARR."
+        },
+        {
+          "risk_id": "R3",
+          "tef": 3,
+          "tef_reason": "With ~60 engineers on partly unmanaged, local-admin laptops, infostealer compromise of a GitHub PAT or session token (RedLine/Lumma-class, the same pattern behind the 2023-24 wave of repo-secret breaches) is a realistic 1-10 times-per-year event, supplemented by opportunistic mining of leaked repo history.",
+          "vuln": 4,
+          "vuln_reason": "The control environment converts one stolen token into subscription compromise: historical .env connection strings persist in repo history, the CI service principal holds long-lived Contributor secrets on the single production subscription, and there is no secret scanning, rotation regime, or SIEM to catch anomalous SP sign-ins \u2014 45-70% that a harvested credential becomes a material incident.",
+          "primary_impact": 4,
+          "primary_impact_reason": "Contributor rights over the only production subscription reach App Service, PostgreSQL, and Blob Storage including backups, so direct cost spans full-environment IR, credential/infrastructure rebuild, and potential backup destruction or extortion \u2014 $500k-2M.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "Exfiltration of the production database plus backups is a worst-case disclosure of all ~500k end users' PII, driving notification to all 1,200 customer orgs, fines, mass churn, and derailment of the SOC 2 Type I audit \u2014 likely >$2M."
+        },
+        {
+          "risk_id": "R4",
+          "tef": 4,
+          "tef_reason": "200 remote-first employees mixing personal browsing with work on their laptops face commodity malware delivery (malvertising, trojanized installers, phishing loaders) on the order of 10-100 meaningful attempts per year across the fleet.",
+          "vuln": 3,
+          "vuln_reason": "Default Defender AV blocks most commodity payloads, but ~40% of laptops are outside Intune, users run as local admin enabling AV tampering and privilege escalation, and with no EDR or SIEM nobody triages the alerts that do fire \u2014 so 20-45% of determined attempts progress to a material foothold or encryption event.",
+          "primary_impact": 3,
+          "primary_impact_reason": "Encryption of synced SharePoint libraries via the OneDrive client plus laptop rebuilds means multi-day operational disruption and an extortion demand, but SharePoint versioning/recycle-bin recovery and the endpoint-centric blast radius keep direct cost around $100-500k for a 3-person IT team.",
+          "secondary_impact": 3,
+          "secondary_impact_reason": "Customer-facing support and delivery delays cause some churn and the incident weakens the SOC 2 narrative, but unless stolen Entra tokens are leveraged into bulk data theft (scored under R1/R3 paths), notification obligations are limited \u2014 $100-500k."
+        },
+        {
+          "risk_id": "R5",
+          "tef": 3,
+          "tef_reason": "Normal attrition at a 200-person company plus contractor churn produces dormant credentials many times per year, and a subset become threat events via disgruntled-leaver misuse or credential-stuffing of unwatched accounts \u2014 realistically 1-10 threat events annually.",
+          "vuln": 4,
+          "vuln_reason": "Offboarding is manual tickets across Entra, ~15 SSO apps, Azure, GitHub, and standing Postgres logins that sit outside SSO/MFA entirely, and there is no access recertification, database activity monitoring, or SIEM \u2014 so a misuse attempt against a surviving credential succeeds and goes unnoticed in most cases (45-70%).",
+          "primary_impact": 3,
+          "primary_impact_reason": "A direct Postgres account lets a former contractor export customer tables wholesale; direct cost is forensic reconstruction of months of unlogged access, legal action, and emergency credential audits across all systems \u2014 $100-500k.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "Because contractor DB accounts likely see multi-tenant data, an export triggers breach notification to a broad slice of the 1,200 customer orgs, and a demonstrably failed offboarding control is a direct SOC 2 Type I finding that jeopardizes the audit timeline and enterprise deals ($500k-2M)."
+        }
+      ]
+    }
+  ],
+  "table": [
+    {
+      "risk_id": "R1",
+      "title": "AiTM credential phishing leading to M365/Entra account takeover",
+      "medians": {
+        "tef": 5,
+        "vuln": 4,
+        "primary_impact": 3,
+        "secondary_impact": 4
+      },
+      "factor_spread": {
+        "tef": 1,
+        "vuln": 0,
+        "primary_impact": 0,
+        "secondary_impact": 0
+      },
+      "likelihood": 4.5,
+      "impact": 3.4,
+      "composite": 15.3,
+      "tier": "High",
+      "disagreement_flags": [],
+      "per_lens": [
+        {
+          "lens": "threat-intel",
+          "risk_id": "R1",
+          "tef": 5,
+          "tef_reason": "AiTM phishing (Evilginx/EvilProxy, Tycoon/Mamba PhaaS) is near-continuous commodity traffic against any M365 tenant; 200 harvestable mailboxes and public Entra login make attempts effectively daily (>100/yr).",
+          "vuln": 4,
+          "vuln_reason": "Authenticator push is reverse-proxyable and AiTM kits steal the post-MFA session cookie, and with no Conditional Access device-compliance/auth-strength and no SIEM to spot cookie replay, a landed phish reliably becomes a material session takeover (45-70%).",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct loss is IR, forced tenant-wide credential/session resets, and typical BEC vendor-payment fraud, landing in the $100-500k band for a firm this size.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "A hijacked session can bulk-pull SharePoint/OneDrive and SSO-app data, triggering customer notifications, deal loss, and a SOC 2 setback, plausibly $500k-2M."
+        },
+        {
+          "lens": "business-impact",
+          "risk_id": "R1",
+          "tef": 5,
+          "tef_reason": "Credential phishing against a 200-person, fully remote M365 tenant is near-continuous; AiTM kits like Evilginx are commoditized in phishing-as-a-service offerings, so proxied-login attempts against Entra tenants of this size occur far more than 100 times a year.",
+          "vuln": 4,
+          "vuln_reason": "Authenticator push is defeated by AiTM session-cookie theft by design, and with no Conditional Access device-compliance or authentication-strength policies there is no compensating control; a 3-person IT team with no SIEM will not catch the anomalous sign-in, so a user who completes the proxied login is compromised at well above coin-flip probability (45-70%).",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct costs are tenant-wide IR/forensics, mailbox and session remediation across 15 SSO apps, and probable BEC/vendor-payment fraud loss; for a single-identity compromise this typically lands in the $100-500k band, since production Azure infrastructure and the SaaS product itself keep running.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "Bulk download of customer PII from SharePoint/SSO-connected apps triggers notification duty to a subset of the 1,200 customer orgs, churn conversations at a $20M ARR base, and a documented identity-control failure mid-SOC 2 that stalls enterprise deals \u2014 plausibly $500k-2M but short of a full 500k-user database breach."
+        },
+        {
+          "lens": "control-environment",
+          "risk_id": "R1",
+          "tef": 4,
+          "tef_reason": "Credential phishing against a 200-seat M365 tenant is a constant background threat, and Evilginx-class AiTM kits are now standard in commodity phishing-as-a-service (e.g. Tycoon 2FA, EvilProxy); expect tens of AiTM-capable campaigns reaching inboxes per year even if generic spray is near-continuous.",
+          "vuln": 4,
+          "vuln_reason": "Authenticator push offers no phishing resistance against session-cookie proxying, and there are no Conditional Access device-compliance or authentication-strength policies to reject the attacker's replayed session; with no SIEM, anomalous sign-ins and inbox rules go unreviewed by a 3-person IT team, so a successful lure very likely matures into a material account takeover (45-70%).",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct losses are incident response, mailbox/session forensics across the tenant, and probable vendor-payment (BEC) fraud, which for a company this size typically lands in the $100-500k band rather than causing production downtime.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "A single compromised identity fronts SharePoint/OneDrive and ~15 SSO apps with no data-loss controls, so bulk download of customer PII is plausible, triggering notification to affected customer orgs, churn among the 1,200 tenants, and a SOC 2 Type I setback ($500k-2M)."
+        }
+      ],
+      "rank": 2
+    },
+    {
+      "risk_id": "R2",
+      "title": "Public web app exploitation (SQLi/IDOR/CVE) leading to PostgreSQL customer-data exfiltration",
+      "medians": {
+        "tef": 5,
+        "vuln": 3,
+        "primary_impact": 3,
+        "secondary_impact": 5
+      },
+      "factor_spread": {
+        "tef": 0,
+        "vuln": 1,
+        "primary_impact": 1,
+        "secondary_impact": 0
+      },
+      "likelihood": 4,
+      "impact": 3.8,
+      "composite": 15.2,
+      "tier": "High",
+      "disagreement_flags": [],
+      "per_lens": [
+        {
+          "lens": "threat-intel",
+          "risk_id": "R2",
+          "tef": 5,
+          "tef_reason": "Internet-facing App Service is hit by automated OWASP/CVE mass scanners and opportunistic exploit attempts continuously (>100/yr); an unauthenticated multi-tenant SaaS endpoint is a standing magnet.",
+          "vuln": 3,
+          "vuln_reason": "No WAF and no secure-SDLC owner raise the odds a real SQLi/IDOR/CVE is found, but exploitation-to-material-exfil still depends on an actual flaw existing, putting susceptibility in the 20-45% band rather than near-certain.",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct incident-response, forensics, and remediation of an app-layer breach for a ~$20M ARR firm typically falls in the $100-500k band.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "Dumping the shared PostgreSQL crosses tenant isolation and exposes ~500k PII across ~1,200 B2B orgs, driving mass breach notification, contractual penalties, churn, and SOC 2 collapse, credibly >$2M."
+        },
+        {
+          "lens": "business-impact",
+          "risk_id": "R2",
+          "tef": 5,
+          "tef_reason": "Any internet-facing App Service is probed by mass scanners (Shodan-indexed, automated CVE and injection scanning) essentially daily; threat events against this endpoint exceed 100/yr as a baseline of internet exposure.",
+          "vuln": 3,
+          "vuln_reason": "Most automated probes fail against any given app, but with no WAF, no dedicated security engineer, no secure-SDLC gates, and a multi-tenant app where one IDOR/SQLi crosses all tenant boundaries, the chance that the sustained probing pressure finds an exploitable flaw and converts to a material incident sits in the 20-45% band.",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct loss is emergency IR/forensics, hotfix development, possible emergency downtime of the revenue-generating app, and extortion negotiation \u2014 typically $100-500k when the database is read/exfiltrated rather than destroyed.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "A dump of the shared PostgreSQL exposes PII of ~500k end users across all ~1,200 customer orgs: notification at that scale, regulatory exposure, churn and stalled enterprise pipeline against $20M ARR, plus a published extortion sample and a derailed SOC 2 Type I clearly exceed $2M."
+        },
+        {
+          "lens": "control-environment",
+          "risk_id": "R2",
+          "tef": 5,
+          "tef_reason": "The App Service is internet-facing with no WAF, so OWASP-class probing and mass CVE scanning (e.g. post-disclosure framework exploits) hit it near-continuously \u2014 well over 100 threat events per year is the norm for any public multi-tenant SaaS endpoint.",
+          "vuln": 2,
+          "vuln_reason": "Absent a WAF, secure-SDLC gates, or a security engineer driving patch SLAs, an exploitable flaw would go unshielded and exploitation undetected (no SIEM, no app-layer alerting); however, each individual scan only becomes a material incident if a matching injectable endpoint or unpatched CVE actually exists, keeping per-attempt susceptibility in the 5-20% band.",
+          "primary_impact": 4,
+          "primary_impact_reason": "A tenant-crossing dump of the shared PostgreSQL database forces full forensic IR, emergency patching, extortion handling, and likely external counsel/DFIR retainers at a firm with no in-house security staff \u2014 realistically $500k-2M direct.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "Exfiltration of PII for ~500k end users requires breach notification across ~1,200 customer B2B orgs, invites regulatory exposure and contractual penalties, and would gut the in-progress SOC 2 program and pipeline deals \u2014 plausibly exceeding $2M against $20M ARR."
+        }
+      ],
+      "rank": 3
+    },
+    {
+      "risk_id": "R3",
+      "title": "Leaked CI/CD and cloud secrets leading to Azure production subscription compromise",
+      "medians": {
+        "tef": 4,
+        "vuln": 4,
+        "primary_impact": 4,
+        "secondary_impact": 5
+      },
+      "factor_spread": {
+        "tef": 1,
+        "vuln": 0,
+        "primary_impact": 0,
+        "secondary_impact": 0
+      },
+      "likelihood": 4,
+      "impact": 4.4,
+      "composite": 17.6,
+      "tier": "Critical",
+      "disagreement_flags": [],
+      "per_lens": [
+        {
+          "lens": "threat-intel",
+          "risk_id": "R3",
+          "tef": 4,
+          "tef_reason": "Infostealer infections of developer laptops and automated repo/history secret-scanning are among the most prevalent 2024-2025 initial-access vectors; with ~60 engineers and historical .env files this company is a realistic frequent target (10-100/yr).",
+          "vuln": 4,
+          "vuln_reason": "Long-lived Contributor-scoped service-principal secrets plus committed connection strings mean a single harvested live secret yields full prod access, and with no EDR to catch the stealer and no secret-exposure monitoring, an attempt readily becomes an incident (45-70%).",
+          "primary_impact": 4,
+          "primary_impact_reason": "Compromise of the single prod subscription enables exfiltration of the database plus backups and persistence/ransom, with recovery, rebuild, and IR costs in the $500k-2M band.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "Loss of production data and backups is a total-breach scenario for all ~500k end users and ~1,200 orgs, driving notification, fines, mass churn, and destroyed SOC 2 credibility, credibly >$2M."
+        },
+        {
+          "lens": "business-impact",
+          "risk_id": "R3",
+          "tef": 4,
+          "tef_reason": "With ~60 engineers on unmanaged, local-admin laptops, infostealer campaigns (RedLine/Lumma-class) plus continuous automated scanning of leaked tokens and repo secrets generate on the order of 10-100 credible attempts per year at harvesting a usable GitHub PAT or secret.",
+          "vuln": 4,
+          "vuln_reason": "The company confirms live attack paths: historical .env files/connection strings in repo history and long-lived Contributor-scope service-principal secrets in GitHub Actions, with nobody monitoring for secret exposure \u2014 a stolen PAT converts to production access at 45-70% because the secrets are valid, long-lived, and unrotated.",
+          "primary_impact": 4,
+          "primary_impact_reason": "Contributor rights over the single production subscription reach App Service, PostgreSQL, and Blob Storage including backups; recovery from a compromise with planted persistence means subscription-wide credential rotation, rebuild, and multi-day SLA-penalized downtime \u2014 $500k-2M for a $20M ARR single-product company.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "Exfiltration of the production database AND its backups is a full-population breach (500k users, 1,200 orgs) with maximal notification, churn, and deal-loss exposure, and a cloud-governance failure that could reset the SOC 2 timeline \u2014 over $2M."
+        },
+        {
+          "lens": "control-environment",
+          "risk_id": "R3",
+          "tef": 3,
+          "tef_reason": "With ~60 engineers on partly unmanaged, local-admin laptops, infostealer compromise of a GitHub PAT or session token (RedLine/Lumma-class, the same pattern behind the 2023-24 wave of repo-secret breaches) is a realistic 1-10 times-per-year event, supplemented by opportunistic mining of leaked repo history.",
+          "vuln": 4,
+          "vuln_reason": "The control environment converts one stolen token into subscription compromise: historical .env connection strings persist in repo history, the CI service principal holds long-lived Contributor secrets on the single production subscription, and there is no secret scanning, rotation regime, or SIEM to catch anomalous SP sign-ins \u2014 45-70% that a harvested credential becomes a material incident.",
+          "primary_impact": 4,
+          "primary_impact_reason": "Contributor rights over the only production subscription reach App Service, PostgreSQL, and Blob Storage including backups, so direct cost spans full-environment IR, credential/infrastructure rebuild, and potential backup destruction or extortion \u2014 $500k-2M.",
+          "secondary_impact": 5,
+          "secondary_impact_reason": "Exfiltration of the production database plus backups is a worst-case disclosure of all ~500k end users' PII, driving notification to all 1,200 customer orgs, fines, mass churn, and derailment of the SOC 2 Type I audit \u2014 likely >$2M."
+        }
+      ],
+      "rank": 1
+    },
+    {
+      "risk_id": "R4",
+      "title": "Ransomware/extortion via unmanaged remote endpoints",
+      "medians": {
+        "tef": 4,
+        "vuln": 3,
+        "primary_impact": 4,
+        "secondary_impact": 3
+      },
+      "factor_spread": {
+        "tef": 1,
+        "vuln": 1,
+        "primary_impact": 1,
+        "secondary_impact": 1
+      },
+      "likelihood": 3.5,
+      "impact": 3.6,
+      "composite": 12.6,
+      "tier": "High",
+      "disagreement_flags": [],
+      "per_lens": [
+        {
+          "lens": "threat-intel",
+          "risk_id": "R4",
+          "tef": 4,
+          "tef_reason": "Commodity loaders/infostealers via malvertising, SEO-poisoned installers, and phishing hit remote workers constantly; with ~40% unenrolled laptops and users as local admins, malware reaching a device is a frequent event (10-100/yr).",
+          "vuln": 4,
+          "vuln_reason": "Local-admin users, Defender on defaults, no EDR, and no SIEM mean nobody is watching alerts, so a loader can escalate, steal tokens, and encrypt synced SharePoint/OneDrive with high success (45-70%).",
+          "primary_impact": 4,
+          "primary_impact_reason": "A 3-person IT team facing multi-day recovery of encrypted synced libraries plus an extortion demand and downtime lands in the $500k-2M band.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "Modern affiliates double-extort by stealing data before encryption, so synced corporate/customer data leakage plus operational disruption and reputational hit plausibly reaches $500k-2M."
+        },
+        {
+          "lens": "business-impact",
+          "risk_id": "R4",
+          "tef": 5,
+          "tef_reason": "Malvertising, trojanized installers, and commodity phishing hit 200 remote, personal-use-mixed laptops continuously; malware delivery attempts against this workforce comfortably exceed 100 per year.",
+          "vuln": 3,
+          "vuln_reason": "Default Defender AV stops much commodity malware, holding per-attempt conversion below half, but ~40% of laptops are outside Intune, users are local admins, and no EDR/SIEM means nobody responds to what gets through \u2014 putting escalation to a material incident in the 20-45% band.",
+          "primary_impact": 4,
+          "primary_impact_reason": "Token theft plus encryption of synced SharePoint/OneDrive libraries forces multi-day restoration by a 3-person IT team, halting support, billing, and engineering operations, with an extortion demand on top \u2014 $500k-2M in response, recovery, and productivity loss even though the Azure production app itself likely stays up.",
+          "secondary_impact": 3,
+          "secondary_impact_reason": "Customer data cached in mailboxes and synced libraries creates a notification question for some customer orgs and the incident is reportable to the SOC 2 auditor, but it is not a database-wide breach \u2014 churn and reputational cost plausibly land at $100-500k."
+        },
+        {
+          "lens": "control-environment",
+          "risk_id": "R4",
+          "tef": 4,
+          "tef_reason": "200 remote-first employees mixing personal browsing with work on their laptops face commodity malware delivery (malvertising, trojanized installers, phishing loaders) on the order of 10-100 meaningful attempts per year across the fleet.",
+          "vuln": 3,
+          "vuln_reason": "Default Defender AV blocks most commodity payloads, but ~40% of laptops are outside Intune, users run as local admin enabling AV tampering and privilege escalation, and with no EDR or SIEM nobody triages the alerts that do fire \u2014 so 20-45% of determined attempts progress to a material foothold or encryption event.",
+          "primary_impact": 3,
+          "primary_impact_reason": "Encryption of synced SharePoint libraries via the OneDrive client plus laptop rebuilds means multi-day operational disruption and an extortion demand, but SharePoint versioning/recycle-bin recovery and the endpoint-centric blast radius keep direct cost around $100-500k for a 3-person IT team.",
+          "secondary_impact": 3,
+          "secondary_impact_reason": "Customer-facing support and delivery delays cause some churn and the incident weakens the SOC 2 narrative, but unless stolen Entra tokens are leveraged into bulk data theft (scored under R1/R3 paths), notification obligations are limited \u2014 $100-500k."
+        }
+      ],
+      "rank": 4
+    },
+    {
+      "risk_id": "R5",
+      "title": "Offboarding gaps: dormant employee/contractor access to production data",
+      "medians": {
+        "tef": 3,
+        "vuln": 4,
+        "primary_impact": 3,
+        "secondary_impact": 4
+      },
+      "factor_spread": {
+        "tef": 0,
+        "vuln": 1,
+        "primary_impact": 0,
+        "secondary_impact": 0
+      },
+      "likelihood": 3.5,
+      "impact": 3.4,
+      "composite": 11.9,
+      "tier": "High",
+      "disagreement_flags": [],
+      "per_lens": [
+        {
+          "lens": "threat-intel",
+          "risk_id": "R5",
+          "tef": 3,
+          "tef_reason": "Dormant-access misuse and credential-stuffing of orphaned accounts are real but lower-volume than external mass campaigns; with manual ticket-driven offboarding and standing contractor Postgres logins, missed revocations creating live dormant access occur a few times a year (1-10/yr).",
+          "vuln": 4,
+          "vuln_reason": "Contractor Postgres accounts sit outside SSO/MFA and a missed ticket leaves working prod access indefinitely with no monitoring, so a departed insider or credential-stuffer who targets one has a high chance of undetected material misuse (45-70%).",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct cost of a dormant-credential data export or misuse plus the ensuing IR and forensics falls in the $100-500k band.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "Exported customer tables trigger breach notification and churn, and an offboarding failure directly undercuts the in-progress SOC 2 program, plausibly $500k-2M."
+        },
+        {
+          "lens": "business-impact",
+          "risk_id": "R5",
+          "tef": 3,
+          "tef_reason": "A 200-employee company with contractor churn sees dozens of departures a year; with manual ticket-driven offboarding across Entra, 15 SSO apps, Azure, GitHub, and out-of-band Postgres logins, several missed or delayed revocations per year (1-10 threat events) is the realistic base rate.",
+          "vuln": 3,
+          "vuln_reason": "Direct contractor Postgres accounts sit outside SSO with no dormant-account review and no detection of anomalous queries, so a surviving credential works indefinitely; still, most departed users never abuse access and credential-stuffing must guess the right account, putting conversion to a material incident at 20-45%.",
+          "primary_impact": 3,
+          "primary_impact_reason": "Direct loss is investigation and legal response to insider exfiltration via a legitimate credential \u2014 no downtime or ransomware recovery \u2014 but with no SIEM or query logging, scoping 'what was accessed for how many months' requires expensive external forensics, landing at $100-500k.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "A contractor Postgres login can export multi-tenant customer tables, triggering notification to affected orgs among the 1,200 and churn; an unrevoked-access finding is a classic SOC 2 access-control exception that jeopardizes the Type I audit and pending enterprise deals \u2014 $500k-2M, below the full-population breach band."
+        },
+        {
+          "lens": "control-environment",
+          "risk_id": "R5",
+          "tef": 3,
+          "tef_reason": "Normal attrition at a 200-person company plus contractor churn produces dormant credentials many times per year, and a subset become threat events via disgruntled-leaver misuse or credential-stuffing of unwatched accounts \u2014 realistically 1-10 threat events annually.",
+          "vuln": 4,
+          "vuln_reason": "Offboarding is manual tickets across Entra, ~15 SSO apps, Azure, GitHub, and standing Postgres logins that sit outside SSO/MFA entirely, and there is no access recertification, database activity monitoring, or SIEM \u2014 so a misuse attempt against a surviving credential succeeds and goes unnoticed in most cases (45-70%).",
+          "primary_impact": 3,
+          "primary_impact_reason": "A direct Postgres account lets a former contractor export customer tables wholesale; direct cost is forensic reconstruction of months of unlogged access, legal action, and emergency credential audits across all systems \u2014 $100-500k.",
+          "secondary_impact": 4,
+          "secondary_impact_reason": "Because contractor DB accounts likely see multi-tenant data, an export triggers breach notification to a broad slice of the 1,200 customer orgs, and a demonstrably failed offboarding control is a direct SOC 2 Type I finding that jeopardizes the audit timeline and enterprise deals ($500k-2M)."
+        }
+      ],
+      "rank": 5
+    }
+  ],
+  "ranking": [
+    {
+      "rank": 1,
+      "risk_id": "R3",
+      "title": "Leaked CI/CD and cloud secrets leading to Azure production subscription compromise",
+      "likelihood": 4,
+      "impact": 4.4,
+      "composite": 17.6,
+      "tier": "Critical",
+      "disagreement_flags": []
+    },
+    {
+      "rank": 2,
+      "risk_id": "R1",
+      "title": "AiTM credential phishing leading to M365/Entra account takeover",
+      "likelihood": 4.5,
+      "impact": 3.4,
+      "composite": 15.3,
+      "tier": "High",
+      "disagreement_flags": []
+    },
+    {
+      "rank": 3,
+      "risk_id": "R2",
+      "title": "Public web app exploitation (SQLi/IDOR/CVE) leading to PostgreSQL customer-data exfiltration",
+      "likelihood": 4,
+      "impact": 3.8,
+      "composite": 15.2,
+      "tier": "High",
+      "disagreement_flags": []
+    },
+    {
+      "rank": 4,
+      "risk_id": "R4",
+      "title": "Ransomware/extortion via unmanaged remote endpoints",
+      "likelihood": 3.5,
+      "impact": 3.6,
+      "composite": 12.6,
+      "tier": "High",
+      "disagreement_flags": []
+    },
+    {
+      "rank": 5,
+      "risk_id": "R5",
+      "title": "Offboarding gaps: dormant employee/contractor access to production data",
+      "likelihood": 3.5,
+      "impact": 3.4,
+      "composite": 11.9,
+      "tier": "High",
+      "disagreement_flags": []
+    }
+  ]
+}
