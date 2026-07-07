@@ -1,3 +1,8 @@
+<!-- Provenance: hand-built from the pipeline's JSON artifacts (outputs/01-09); every number traces to
+     outputs/05_quantification.json (v1.0), outputs/08_advanced_analytics.json (v1.1 + analytics), or
+     outputs/09_research_validation.json (citations). This file is an HTML *fragment by design*: it is
+     published via Claude Artifacts, which wraps it in the document skeleton (doctype/head/body + CSS
+     reset) at deploy time. Opened directly in a browser, HTML5 parsing synthesizes the same skeleton. -->
 <title>Meridian Desk — Risk Prioritization Dashboard</title>
 <style>
   :root {
@@ -24,16 +29,17 @@
 
   header .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
   header h1 { font-size: 26px; margin: 6px 0 4px; font-weight: 600; text-wrap: balance; }
-  header .meta { color: var(--ink-faint); font-size: 13px; }
+  header .meta { color: var(--ink-faint); font-size: 13px; line-height: 1.5; }
   header .meta code { font-family: var(--mono); font-size: 12px; }
 
   section > h2 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; margin: 0 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
-  section .note { font-size: 13px; color: var(--ink-soft); line-height: 1.55; max-width: 72ch; }
+  section .note { font-size: 13px; color: var(--ink-soft); line-height: 1.55; max-width: 78ch; }
 
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
   .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
   .kpi .label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
   .kpi .value { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 26px; font-weight: 600; }
+  .kpi .value .was { font-size: 14px; color: var(--ink-faint); font-weight: 400; text-decoration: line-through; margin-left: 6px; }
   .kpi .sub { font-size: 12px; color: var(--ink-soft); line-height: 1.45; }
   .kpi.crit { border-top: 3px solid var(--crit); }
   .kpi.base { border-top: 3px solid var(--ink-soft); }
@@ -63,45 +69,47 @@
   td .risk-id { font-family: var(--mono); font-weight: 600; color: var(--accent); }
   td .owner { color: var(--ink-soft); font-size: 12px; }
 
+  .mcchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+  .mcchip { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; font-size: 12px; color: var(--ink-soft); }
+  .mcchip b { font-family: var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+
   .flags { display: flex; flex-direction: column; gap: 10px; }
   .flag { background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--high); border-radius: 4px; padding: 10px 14px; font-size: 13px; line-height: 1.5; }
   .flag .src { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--ink-faint); margin-right: 8px; }
   .flag.standing { border-left-color: var(--crit); background: #fffdfc; }
+  .flag.resolved { border-left-color: var(--good); }
 
-  footer { font-size: 12px; color: var(--ink-faint); line-height: 1.6; border-top: 1px solid var(--line); padding-top: 14px; max-width: 80ch; }
+  footer { font-size: 12px; color: var(--ink-faint); line-height: 1.6; border-top: 1px solid var(--line); padding-top: 14px; max-width: 84ch; }
   a { color: var(--accent); }
-  @media (prefers-reduced-motion: no-preference) {
-    .kpi, .panel, .flag { transition: border-color .15s ease; }
-  }
 </style>
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Agentic risk prioritization · executed pipeline run</div>
+    <div class="eyebrow">Agentic risk prioritization · executed run + research-calibrated v1.1</div>
     <h1>Meridian Desk — Security Risk Dashboard</h1>
-    <div class="meta">200-employee SaaS on Azure + M365 · 24 agents · 3 scoring lenses · framework <code>FAIR-lite (L×I)</code> · all arithmetic deterministic · run <code>wf_b05c4f43</code></div>
+    <div class="meta">200-employee SaaS on Azure + M365 · pipeline run <code>wf_b05c4f43</code> (24 agents) + research pass (7 agents) · framework <code>FAIR-lite (L×I)</code> · all arithmetic deterministic &amp; replay-verified (<code>PASS</code>, byte-identical) · headline figures = <strong>v1.1 research-calibrated</strong>, struck-through = v1.0 pipeline estimates</div>
   </header>
 
   <section class="kpis" aria-label="Summary">
     <div class="kpi crit">
       <div class="label">Top risk</div>
       <div class="value">R3 · 17.6</div>
-      <div class="sub"><strong>Leaked CI/CD &amp; cloud secrets → Azure subscription compromise.</strong> Upheld 1–1 on adversarial challenge (dissent: R1) — treat R3 + R1 as the top tier.</div>
+      <div class="sub"><strong>Leaked CI/CD &amp; cloud secrets → Azure subscription compromise.</strong> #1 is stable across the impact-weight sweep (0.50–0.70) and mean-vs-median aggregation; one challenger dissent (R1) preserved in the flags.</div>
     </div>
     <div class="kpi base">
       <div class="label">Baseline P(breach, 12 mo)</div>
-      <div class="value">65.7%</div>
-      <div class="sub">Mode estimate; scenario bounds 35.8–91.2%. Independence assumption biases this up.</div>
+      <div class="value">56.7%<span class="was">65.7%</span></div>
+      <div class="sub">v1.1 after web verification (DBIR 2026, GitGuardian 2026, Sophos 2025…). Scenario bounds 33.7–89.6%.</div>
     </div>
     <div class="kpi resid">
       <div class="label">Residual, all 5 mitigations</div>
-      <div class="value"><span class="down">25.5%</span></div>
-      <div class="sub">−40.2 pp absolute, −61.2% relative. Bounds 6.3–65.6%.</div>
+      <div class="value"><span class="down">20.5%</span><span class="was">25.5%</span></div>
+      <div class="sub">−36.2 pp (−63.9% relative). Monte Carlo median reduction 38.2 pp (P5–P95: 32.0–45.1).</div>
     </div>
     <div class="kpi lever">
       <div class="label">Biggest single lever</div>
-      <div class="value">R1 · −11.7 pp</div>
-      <div class="sub">Phishing-resistant MFA moves the aggregate most on its own — sequencing ≠ ranking.</div>
+      <div class="value">R1 · −14.8 pp</div>
+      <div class="sub">Phishing-resistant MFA moves the aggregate most on its own — and has the best evidence base (Google 350k-attempt study). Best ROI is R3 (ROSI 424%).</div>
     </div>
   </section>
 
@@ -115,85 +123,108 @@
       </div>
       <div class="panel">
         <h3>Ranking</h3>
-        <p class="sub">Composite = L × I (max 25). No scorer-disagreement flags fired (factor spread &lt; 2 everywhere).</p>
+        <p class="sub">Composite = L × I (max 25). No scorer-disagreement flags fired; R1↔R2 gap is 0.1 — flagged as a statistical tie.</p>
         <div class="tablewrap">
           <table id="ranktable">
             <thead><tr><th>#</th><th>Risk</th><th>L</th><th>I</th><th>Score</th><th>Tier</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
-        <p class="sub" style="margin-top:10px">Adversarial challenge of #1: <span class="chip ok">impact — upheld (high conf.)</span> <span class="chip warn">likelihood — refuted → R1 (medium conf.)</span></p>
+        <p class="sub" style="margin-top:10px">Adversarial challenge of #1: <span class="chip ok">impact — upheld (high conf.)</span> <span class="chip warn">likelihood — refuted → R1 (medium conf.)</span> · Robustness: <span class="chip info">#1 stable under weight sweep + mean/median</span></p>
       </div>
     </div>
   </section>
 
   <section>
-    <h2>Quantified reduction — residual = baseline × (1 − effectiveness)</h2>
+    <h2>Quantified reduction — v1.1 research-calibrated · residual = baseline × (1 − effectiveness)</h2>
+    <div class="mcchips">
+      <div class="mcchip">Monte Carlo (100k, independent): reduction <b>38.2 pp</b> median, P5–P95 <b>32.0–45.1</b></div>
+      <div class="mcchip">Correlated variant (rank corr ≈ 0.4): residual band widens to <b>17.7–39.9%</b>, median unmoved</div>
+      <div class="mcchip">P(residual ≤ 35%) = <b>93%</b></div>
+      <div class="mcchip">Portfolio EAL <b>$1.69M → $0.53M</b> · ROSI <b>221%</b> on ~$362k year-1 spend</div>
+    </div>
     <div class="grid2">
       <div class="panel">
-        <h3>Baseline → residual per risk</h3>
+        <h3>Baseline → residual per risk (v1.1)</h3>
         <p class="sub">Annual probability of a material incident (&gt;$25k IR or notification duty). Dot pair = mode; faint bands = low–high scenario ranges.</p>
         <div id="dumbbell"></div>
       </div>
       <div class="panel">
-        <h3>Marginal contribution of each mitigation alone</h3>
+        <h3>Marginal contribution of each mitigation alone (v1.1)</h3>
         <p class="sub">Drop in aggregate P(breach) if only that one mitigation is implemented — the number that should drive sequencing.</p>
         <div id="marginal"></div>
+      </div>
+      <div class="panel">
+        <h3>Tornado — which parameter moves the answer most</h3>
+        <p class="sub">One-way sweep, each parameter low→high with others at mode; swing of the aggregate residual. Verify R2's baseline first (attack-surface scan), then R1 rollout coverage.</p>
+        <div id="tornado"></div>
+      </div>
+      <div class="panel">
+        <h3>Return on security investment (v1.1)</h3>
+        <p class="sub">ROSI = (EAL avoided − year-1 cost) / cost. R5's 13% is honest: it's a SOC 2-evidence and tail-risk play, not an ROI play.</p>
+        <div id="rosi"></div>
       </div>
     </div>
   </section>
 
   <section>
-    <h2>Mitigations — control · owner · effort (feasibility-adjusted)</h2>
-    <p class="note" style="margin-bottom:10px">All five packages returned <span class="chip warn">approve with changes</span> from the IT-feasibility reviewer — architect estimates ran ~40–50% optimistic on effort and missed licensing traps. Figures below are the adjusted ones.</p>
+    <h2>Mitigations — control · owner · effort (feasibility-adjusted, prices vendor-verified 2026-07-06)</h2>
+    <p class="note" style="margin-bottom:10px">All five packages returned <span class="chip warn">approve with changes</span> from the IT-feasibility reviewer — architect estimates ran ~40–50% optimistic on effort and missed licensing traps. SOC 2 mappings below are the audited set (two criteria dropped, two added vs. the agents' originals); * = conditional on the monitoring/IR-runbook work in the roadmap.</p>
     <div class="panel tablewrap">
       <table id="mittable">
-        <thead><tr><th>Risk</th><th>Primary control</th><th>Owner</th><th>Effort</th><th>Annual cost</th><th>SOC 2</th></tr></thead>
+        <thead><tr><th>Risk</th><th>Primary control</th><th>Owner</th><th>Effort</th><th>Annual cost</th><th>SOC 2 (audited)</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
   </section>
 
   <section>
-    <h2>Where not to trust this — flags raised by the pipeline itself</h2>
+    <h2>Where not to trust this — flags raised by the pipeline, and what research resolved</h2>
     <div class="flags">
-      <div class="flag standing"><span class="src">Standing</span>Every numeric parameter (baselines, effectiveness, prices) is an LLM estimate from model memory. Validate against current DBIR/IBM editions, real Azure/M365/GitHub quotes, and the company's own telemetry before budget or board use.</div>
-      <div class="flag"><span class="src">Red team</span>The five baselines jointly imply ~65% annual incident probability — high vs. SMB base rates; and one shared infostealer event drives both R3 and R4 (double counting), so the independence formula overstates the aggregate.</div>
-      <div class="flag"><span class="src">Red team</span>R3's and R5's estimates assumed contradictory states of the same control (Postgres Entra-auth deferred vs. completed). R5 was auto-revised (baseline 8→10%, effectiveness 65→57%); cross-risk issues remain human work.</div>
-      <div class="flag"><span class="src">Challenge</span>One challenger refuted R3's #1 rank on a TEF/VULN conditioning mismatch, proposing R1. Within 2.3 composite points — a human should adjudicate; funding both is the robust read.</div>
-      <div class="flag"><span class="src">Feasibility</span>Correlated under-delivery: all five effectiveness estimates assume full implementation by one 3-person IT team that is also running SOC 2. Slippage hits every residual at once.</div>
+      <div class="flag standing"><span class="src">Standing</span>v1.1 numbers are research-anchored but AI-gathered: a human should click through the ~30 cited sources (SOURCES.md) and validate against company telemetry before board use. Survey-based figures measure "orgs with ≥1 event," not calibrated per-org probabilities.</div>
+      <div class="flag resolved"><span class="src">Resolved</span>"All parameters are model memory" → every baseline/effectiveness/price verified against DBIR 2026, GitGuardian 2026, Sophos 2025, NetDiligence 2025, Picus 2025 and live vendor pages; five parameters recalibrated (R2/R3/R5 baselines ↓, R2 effectiveness ↓, R4/R5 caps). v1.0 → v1.1 documented row-by-row.</div>
+      <div class="flag resolved"><span class="src">Resolved</span>Red team's "≈65% joint baseline is too high" → v1.1 lands at 56.7%, inside the ceiling the red team argued for. External research and the internal skeptic converged independently.</div>
+      <div class="flag resolved"><span class="src">Resolved</span>Challenger dissent on #1 → sensitivity sweep shows R3 stays #1 for every impact weight 0.50–0.70 and under mean aggregation; R1/R2 flagged as tied.</div>
+      <div class="flag"><span class="src">Open</span>Notification-duty materiality assumption underlies all five baselines — needs one conversation with counsel; research can't resolve it.</div>
+      <div class="flag"><span class="src">Open</span>Correlated under-delivery: all five effectiveness values assume one 3-person team lands every package. Mitigated only by the roadmap's phased waves; watch the KRIs, not the plan.</div>
     </div>
-    <p class="note" style="margin-top:10px">23 auto-collected flags + 9 red-team issues in total — full list in <code>HUMAN_REVIEW_FLAGS.md</code>.</p>
+    <p class="note" style="margin-top:10px">Full ledger: 23 auto-collected flags + 9 red-team issues + post-research status table in <code>HUMAN_REVIEW_FLAGS.md</code>.</p>
   </section>
 
   <footer>
-    Fictional scenario ("Meridian Desk") for a risk-prioritization assessment. Pipeline: register validation → 3-lens scoring panel → deterministic aggregation → adversarial challenge → mitigation + feasibility review → blind quant estimation → red-team → revision → deterministic model → synthesis. Prompts, schemas, orchestration code, and raw JSON outputs live alongside this file in the repository.
+    Fictional scenario ("Meridian Desk") for a risk-prioritization assessment. Pipeline: register validation → 3-lens scoring → deterministic aggregation → adversarial challenge → mitigation + feasibility → blind quant estimation → red team → revision → deterministic model → synthesis; then a 7-agent research pass (baselines, effectiveness, costs, pricing, threat landscape, ATT&amp;CK/SOC 2) producing the v1.1 calibration. This page is hand-built from the repo's JSON artifacts (outputs/01–09) — no number here exists outside those files. Prompts, schemas, orchestration code, replay harness and analytics live alongside this file in the repository.
   </footer>
 </div>
 
 <script>
 (function () {
+  // v1.1 research-calibrated parameters (outputs/08_advanced_analytics.json);
+  // ranking/scores are the pipeline run (outputs/02). marg = delta_pp_vs_baseline v1.1.
   const RISKS = [
-    { id: 'R3', rank: 1, name: 'Leaked CI/CD & cloud secrets → Azure subscription compromise', L: 4.0, I: 4.4, score: 17.6, tier: 'Critical',
-      b: [8, 20, 40], e: [45, 70, 85], r: [1.2, 6.0, 22], marg: 6.0,
-      control: 'GitHub Actions OIDC federation to Entra ID — delete long-lived SP secrets; Secret Protection, Key Vault, least-privilege RBAC, immutable backups',
-      owner: 'Head of Engineering (+IT Manager)', effort: 'L · 13 pw', cost: '$15k–32k', soc2: 'CC6.1–6.3, 6.6, 7.1–7.4, 8.1, A1.2' },
-    { id: 'R1', rank: 2, name: 'AiTM phishing → M365 account takeover', L: 4.5, I: 3.4, score: 15.3, tier: 'High',
-      b: [15, 30, 55], e: [60, 80, 92], r: [1.2, 6.0, 22], marg: 11.7,
-      control: 'Phishing-resistant MFA (passkeys/FIDO2) via Conditional Access authentication strengths; hardware keys for admins & finance',
-      owner: 'IT Manager', effort: 'L · 12 pw', cost: '$40k–58k yr-1', soc2: 'CC6.1, 6.6–6.7, 7.2–7.4' },
-    { id: 'R2', rank: 3, name: 'Web app exploitation → PostgreSQL exfiltration', L: 4.0, I: 3.8, score: 15.2, tier: 'High',
-      b: [8, 20, 40], e: [45, 65, 80], r: [1.6, 7.0, 22], marg: 5.5,
-      control: 'Azure WAF (Prevention mode) + CodeQL/Dependabot gates + least-privilege DB role + PostgreSQL row-level security + annual pen test',
-      owner: 'Head of Engineering (IT executes WAF)', effort: 'L · 18 pw', cost: '$45k–75k yr-1', soc2: 'CC6.1, 6.6, 7.1–7.4, 8.1' },
-    { id: 'R4', rank: 4, name: 'Ransomware via unmanaged remote endpoints', L: 3.5, I: 3.6, score: 12.6, tier: 'High',
-      b: [8, 15, 30], e: [45, 65, 80], r: [1.6, 5.25, 16.5], marg: 3.9,
-      control: 'Conditional Access compliant-device gating (Intune → ~100%) + Defender for Business EDR + local-admin removal (LAPS/EPM)',
-      owner: 'IT Manager (CTO signs dates)', effort: 'L · 12 pw', cost: '$12k–22k', soc2: 'CC6.1, 6.6, 6.8, 7.2–7.5' },
-    { id: 'R5', rank: 5, name: 'Offboarding gaps / dormant access to production data', L: 3.5, I: 3.4, score: 11.9, tier: 'High',
-      b: [3, 10, 22], e: [40, 57, 72], r: [0.84, 4.3, 13.2], marg: 2.1,
-      control: 'Entra ID as single revocation point: Entra auth on PostgreSQL, SCIM for priority SaaS, automated leaver workflow, quarterly access reviews',
-      owner: 'IT Manager (+Head of Eng)', effort: 'L · 9 pw', cost: '$10k–30k', soc2: 'CC6.1–6.3, 7.2, 9.2' },
+    { id: 'R3', rank: 1, name: 'Leaked CI/CD & cloud secrets → Azure subscription compromise', L: 4.0, I: 4.4, score: 17.6, tier: 'Critical', tie: false,
+      b: [5, 11, 35], e: [45, 70, 85], r: [0.75, 3.3, 19.25], marg: 3.7, rosi: 424,
+      control: 'GitHub Actions OIDC federation to Entra ID — delete long-lived SP secrets; Secret Protection ($19/committer, no Enterprise needed), Key Vault, least-privilege RBAC, immutable backups',
+      owner: 'Head of Engineering (+IT Manager)', effort: 'L · 13 pw', cost: '$15k–32k', soc2: 'CC6.1–6.3, 6.6, 7.1, 7.2*, 7.4*, 8.1, A1.2–A1.3' },
+    { id: 'R1', rank: 2, name: 'AiTM phishing → M365 account takeover', L: 4.5, I: 3.4, score: 15.3, tier: 'High', tie: true,
+      b: [15, 30, 55], e: [60, 80, 92], r: [1.2, 6.0, 22], marg: 14.8, rosi: 338,
+      control: 'Phishing-resistant MFA (passkeys/FIDO2) via Conditional Access authentication strengths; hardware keys for admins & finance; block device-code flow + restrict OAuth consent (residual channels)',
+      owner: 'IT Manager', effort: 'L · 12 pw', cost: '$40k–58k yr-1', soc2: 'CC6.1, 6.6, 7.2*–7.4*' },
+    { id: 'R2', rank: 3, name: 'Web app exploitation → PostgreSQL exfiltration', L: 4.0, I: 3.8, score: 15.2, tier: 'High', tie: true,
+      b: [8, 13, 38], e: [40, 60, 75], r: [2.0, 5.2, 22.8], marg: 3.9, rosi: 126,
+      control: 'Azure WAF (Prevention mode, tuned — stock rules ≈60% precision) + blocking CodeQL/Dependabot gates + least-privilege DB role + PostgreSQL row-level security + annual pen test',
+      owner: 'Head of Engineering (IT executes WAF)', effort: 'L · 18 pw', cost: '$45k–75k yr-1', soc2: 'CC6.1, 6.3, 6.6, 7.1, 7.2*, 8.1' },
+    { id: 'R4', rank: 4, name: 'Ransomware via unmanaged remote endpoints', L: 3.5, I: 3.6, score: 12.6, tier: 'High', tie: false,
+      b: [8, 15, 30], e: [45, 65, 75], r: [2.0, 5.25, 16.5], marg: 5.0, rosi: 185,
+      control: 'Conditional Access compliant-device gating (Intune → ~100%) + Defender for Business EDR ($3/u verified) + local-admin removal (LAPS/EPM $3.00/u)',
+      owner: 'IT Manager (CTO signs dates)', effort: 'L · 12 pw', cost: '$12k–22k', soc2: 'CC6.1, 6.6, 6.8, 7.2, 7.4–7.5 (recovery via R3 backups)' },
+    { id: 'R5', rank: 5, name: 'Offboarding gaps / dormant access to production data', L: 3.5, I: 3.4, score: 11.9, tier: 'High', tie: false,
+      b: [3, 6, 18], e: [40, 57, 70], r: [0.9, 2.58, 10.8], marg: 1.6, rosi: 13,
+      control: 'Entra ID as single revocation point: Entra-only auth on PostgreSQL ($0, verified), SCIM for priority SaaS, automated leaver workflow, quarterly access reviews',
+      owner: 'IT Manager (+Head of Eng)', effort: 'L · 9 pw', cost: '$10k–30k', soc2: 'CC6.1–6.3, 7.2*' },
+  ];
+  const TORNADO = [
+    { p: 'R2 baseline', s: 10.1 }, { p: 'R1 effectiveness', s: 8.1 }, { p: 'R3 baseline', s: 7.4 },
+    { p: 'R1 baseline', s: 6.8 }, { p: 'R4 baseline', s: 6.5 }, { p: 'R5 baseline', s: 5.3 },
   ];
   const C = { crit: '#ac3a2e', high: '#bc7b26', good: '#37714f', ink: '#1d2a32', faint: '#74848c', line: '#d8dfdf', accent: '#136572' };
   const tierColor = t => t === 'Critical' ? C.crit : C.high;
@@ -234,7 +265,7 @@
       const tr = document.createElement('tr');
       tr.innerHTML =
         `<td class="num">${r.rank}</td>` +
-        `<td><span class="risk-id">${r.id}</span> ${r.name}</td>` +
+        `<td><span class="risk-id">${r.id}</span> ${r.name}${r.tie ? ' <span class="chip info">tied</span>' : ''}</td>` +
         `<td class="num">${r.L.toFixed(1)}</td><td class="num">${r.I.toFixed(1)}</td>` +
         `<td class="num"><strong>${r.score.toFixed(1)}</strong></td>` +
         `<td><span class="chip ${r.tier === 'Critical' ? 'crit' : 'high'}">${r.tier}</span></td>`;
@@ -242,13 +273,13 @@
     });
   })();
 
-  // ---- Dumbbell: baseline -> residual ----
+  // ---- Dumbbell: baseline -> residual (v1.1) ----
   (function dumbbell() {
     const W = 460, rowH = 52, m = { l: 44, r: 56, t: 26, b: 30 };
     const H = m.t + m.b + RISKS.length * rowH;
     const maxV = 60;
     const x = v => m.l + v / maxV * (W - m.l - m.r);
-    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Baseline to residual likelihood per risk' });
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Baseline to residual likelihood per risk, v1.1' });
     [0, 15, 30, 45, 60].forEach(v => {
       svg.appendChild(svgEl('line', { x1: x(v), y1: m.t - 6, x2: x(v), y2: H - m.b, stroke: C.line, 'stroke-width': 1 }));
       svg.appendChild(svgEl('text', { x: x(v), y: H - m.b + 18, 'text-anchor': 'middle', fill: C.faint, style: `font:${font}` }, v + '%'));
@@ -269,25 +300,66 @@
     document.getElementById('dumbbell').appendChild(svg);
   })();
 
-  // ---- Marginal contribution bars ----
+  // ---- Marginal contribution bars (v1.1) ----
   (function marginal() {
     const sorted = RISKS.slice().sort((a, b) => b.marg - a.marg);
     const W = 460, rowH = 44, m = { l: 44, r: 70, t: 10, b: 30 };
     const H = m.t + m.b + sorted.length * rowH;
-    const maxV = 12;
+    const maxV = 16;
     const x = v => m.l + v / maxV * (W - m.l - m.r);
-    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Marginal contribution of each mitigation' });
-    [0, 4, 8, 12].forEach(v => {
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Marginal contribution of each mitigation, v1.1' });
+    [0, 4, 8, 12, 16].forEach(v => {
       svg.appendChild(svgEl('line', { x1: x(v), y1: m.t, x2: x(v), y2: H - m.b, stroke: C.line, 'stroke-width': 1 }));
       svg.appendChild(svgEl('text', { x: x(v), y: H - m.b + 18, 'text-anchor': 'middle', fill: C.faint, style: `font:${font}` }, '−' + v + 'pp'));
     });
     sorted.forEach((r, i) => {
       const cy = m.t + i * rowH + rowH / 2;
       svg.appendChild(svgEl('text', { x: 6, y: cy + 4, fill: C.ink, style: `font:600 ${font}` }, r.id));
-      svg.appendChild(svgEl('rect', { x: x(0), y: cy - 11, width: Math.max(2, x(r.marg) - x(0)), height: 22, rx: 3, fill: i === 0 ? C.accent : C.accent, 'fill-opacity': i === 0 ? .95 : .45 }));
+      svg.appendChild(svgEl('rect', { x: x(0), y: cy - 11, width: Math.max(2, x(r.marg) - x(0)), height: 22, rx: 3, fill: C.accent, 'fill-opacity': i === 0 ? .95 : .45 }));
       svg.appendChild(svgEl('text', { x: x(r.marg) + 8, y: cy + 4, fill: C.ink, style: `font:600 ${font}` }, '−' + r.marg.toFixed(1) + 'pp'));
     });
     document.getElementById('marginal').appendChild(svg);
+  })();
+
+  // ---- Tornado ----
+  (function tornado() {
+    const W = 460, rowH = 40, m = { l: 130, r: 64, t: 10, b: 30 };
+    const H = m.t + m.b + TORNADO.length * rowH;
+    const maxV = 11;
+    const x = v => m.l + v / maxV * (W - m.l - m.r);
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'One-way sensitivity of aggregate residual' });
+    [0, 5, 10].forEach(v => {
+      svg.appendChild(svgEl('line', { x1: x(v), y1: m.t, x2: x(v), y2: H - m.b, stroke: C.line, 'stroke-width': 1 }));
+      svg.appendChild(svgEl('text', { x: x(v), y: H - m.b + 18, 'text-anchor': 'middle', fill: C.faint, style: `font:${font}` }, '±' + v + 'pp'));
+    });
+    TORNADO.forEach((t, i) => {
+      const cy = m.t + i * rowH + rowH / 2;
+      svg.appendChild(svgEl('text', { x: m.l - 8, y: cy + 4, 'text-anchor': 'end', fill: C.ink, style: `font:${font}` }, t.p));
+      svg.appendChild(svgEl('rect', { x: x(0), y: cy - 10, width: Math.max(2, x(t.s) - x(0)), height: 20, rx: 3, fill: i === 0 ? C.high : C.high, 'fill-opacity': i === 0 ? .9 : .4 }));
+      svg.appendChild(svgEl('text', { x: x(t.s) + 7, y: cy + 4, fill: C.ink, style: `font:600 ${font}` }, t.s.toFixed(1)));
+    });
+    document.getElementById('tornado').appendChild(svg);
+  })();
+
+  // ---- ROSI bars ----
+  (function rosi() {
+    const sorted = RISKS.slice().sort((a, b) => b.rosi - a.rosi);
+    const W = 460, rowH = 44, m = { l: 44, r: 76, t: 10, b: 30 };
+    const H = m.t + m.b + sorted.length * rowH;
+    const maxV = 450;
+    const x = v => m.l + v / maxV * (W - m.l - m.r);
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Return on security investment per mitigation, v1.1' });
+    [0, 150, 300, 450].forEach(v => {
+      svg.appendChild(svgEl('line', { x1: x(v), y1: m.t, x2: x(v), y2: H - m.b, stroke: C.line, 'stroke-width': 1 }));
+      svg.appendChild(svgEl('text', { x: x(v), y: H - m.b + 18, 'text-anchor': 'middle', fill: C.faint, style: `font:${font}` }, v + '%'));
+    });
+    sorted.forEach((r, i) => {
+      const cy = m.t + i * rowH + rowH / 2;
+      svg.appendChild(svgEl('text', { x: 6, y: cy + 4, fill: C.ink, style: `font:600 ${font}` }, r.id));
+      svg.appendChild(svgEl('rect', { x: x(0), y: cy - 11, width: Math.max(2, x(r.rosi) - x(0)), height: 22, rx: 3, fill: C.good, 'fill-opacity': i === 0 ? .9 : .45 }));
+      svg.appendChild(svgEl('text', { x: x(r.rosi) + 8, y: cy + 4, fill: C.ink, style: `font:600 ${font}` }, r.rosi + '%'));
+    });
+    document.getElementById('rosi').appendChild(svg);
   })();
 
   // ---- Mitigation table ----

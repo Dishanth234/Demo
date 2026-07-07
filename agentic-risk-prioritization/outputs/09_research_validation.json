@@ -1,0 +1,610 @@
+{
+  "research": {
+    "baselines": {
+      "findings": [
+        {
+          "repo_claim": "R1: AiTM-phishing account takeover of M365 (push MFA only, no Conditional Access policies): annual probability of a material incident low 15 / mode 30 / high 55 %",
+          "verdict": "confirmed",
+          "evidence": "Proofpoint's account-takeover research (data through 2024-2025) states: '99% of organizations observed attempted account takeovers' and '62% of organizations experienced a successful ATO', and 'Even with safeguards in place, 65% of compromised accounts had MFA enabled', attributing bypass to AiTM kits like Sneaky 2FA. A newer Proofpoint study (Nov 2024-Nov 2025) found ~3,000 targeted accounts across 900+ M365 environments with a 'confirmed success rate exceeding 50%'. Microsoft Digital Defense Report 2025 (Oct 2025) reports identity-based attacks rose 32% in H1 2025 and names AiTM/token theft as the primary MFA-bypass path. Verizon DBIR 2026 (May 2026) puts phishing at 16% and credential abuse at 13% of initial access, with credential abuse appearing in 39% of all breaches. A 15-55% annual range with mode 30% for a tenant with phishable push MFA and no CA policies is consistent with 62% of orgs seeing at least one successful ATO per year; the main discount is that not every successful ATO becomes a >$25k/material incident, which the below-62% mode already reflects.",
+          "source_title": "Proofpoint: Detecting, Responding to and Stopping Account Takeovers",
+          "source_url": "https://www.proofpoint.com/us/blog/email-and-cloud-threats/detecting-responding-stopping-account-takover",
+          "source_date": "2025 (citing Proofpoint 2024 ATO statistics; corroborated by Nov 2024-Nov 2025 Proofpoint study and Microsoft Digital Defense Report, Oct 2025)",
+          "suggested_change": ""
+        },
+        {
+          "repo_claim": "R2: Public web app exploitation -> customer DB exfiltration (no WAF, no DAST/SAST gates): low 8 / mode 20 / high 40 %",
+          "verdict": "adjust",
+          "evidence": "Verizon DBIR 2026 (published May 2026, covering Nov 2024-Oct 2025): 'Exploitation of vulnerabilities accounted for 31% of breaches' - the #1 initial access vector for the first time in 19 years - and for SMBs specifically 'vulnerability exploitation at 26 percent and credential abuse at 13 percent' (7,152 confirmed SMB breaches). However, DBIR and secondary analyses (SecurityWeek, watchTowr, May 2026) note this exploitation surge is dominated by edge devices/VPN appliances and third-party software CVEs, not bespoke web applications; Basic Web Application Attacks is a smaller distinct pattern. So exploitation is a top vector among orgs that get breached, but the mode of 20%/yr specifically for 'custom web app exploited AND customer DB exfiltrated' is on the high side of what breach-share data supports for a single app.",
+          "source_title": "Verizon DBIR 2026: Vulnerability Exploitation Overtakes Credential Theft as Top Breach Vector (SecurityWeek coverage of verizon.com/business/resources/reports/dbir/)",
+          "source_url": "https://www.securityweek.com/verizon-dbir-2026-vulnerability-exploitation-overtakes-credential-theft-as-top-breach-vector/",
+          "source_date": "2026-05 (DBIR 2026, incidents Nov 2024-Oct 2025)",
+          "suggested_change": "Lower mode from 20% to ~12-15% (keep low 8 / high 35-40): DBIR's 31% exploitation share is driven mainly by edge/VPN device CVEs, not custom SaaS web apps; full DB-exfiltration outcome is a subset of successful exploitation."
+        },
+        {
+          "repo_claim": "R3: Leaked CI/CD or cloud secrets -> Azure subscription compromise (long-lived SP secrets, historical secrets in repos, no secret scanning): low 8 / mode 20 / high 40 %",
+          "verdict": "adjust",
+          "evidence": "GitGuardian State of Secrets Sprawl 2026 (March 2026): '28.65 million new hardcoded secrets were added to public GitHub commits in 2025 alone, a 34% increase year over year'; '64% of secrets confirmed as valid in 2022 were still exploitable in January 2026'; 'Internal repos are 6x more likely than public ones to contain hardcoded secrets'. Verizon DBIR 2026: credential abuse appears in 39% of all breaches at some stage and '50% of ransomware victims had a credential or infostealer event occur within 95 days prior'. This confirms very high EXPOSURE prevalence for a 60-engineer org with historical secrets and no scanning, but no source gives an annual base rate near 20% for the full chain 'leaked secret -> cloud subscription compromise' at a mid-size org; conversion from exposure to material subscription compromise (mostly via a secret actually reaching a public repo, an infostealer, or a compromised dev account) is meaningfully lower than the exposure rate.",
+          "source_title": "GitGuardian - The State of Secrets Sprawl 2026",
+          "source_url": "https://blog.gitguardian.com/the-state-of-secrets-sprawl-2026/",
+          "source_date": "2026-03",
+          "suggested_change": "Lower mode from 20% to ~10-12% and low to ~5% (keep high ~30-40% given 64% of old secrets remain valid and SP secrets are long-lived); the current mode prices the full compromise chain at nearly the same rate as mere secret exposure."
+        },
+        {
+          "repo_claim": "R4: Ransomware via unmanaged endpoints (40% unenrolled, local admin, AV only, no EDR monitoring): low 8 / mode 15 / high 30 %",
+          "verdict": "confirmed",
+          "evidence": "Verizon DBIR 2026 (May 2026): 'Ransomware was involved in 48% of all the breaches analysed this year, up from 44% last year' and '96% of ransomware victims where organizational size was known were SMBs' (Infosecurity Magazine coverage; DBIR 2025 SMB snapshot put ransomware in 88% of SMB breaches). Microsoft Digital Defense Report 2025 (Oct 2025): extortion/ransomware drove 'over half' of attacks with known motive. Sophos State of Ransomware 2025 (June 2025, 3,400 victim orgs): root causes were exploited vulnerabilities 32%, compromised credentials 23%, malicious email 19%, phishing 18%; average recovery cost for 100-250-employee victims was $638,536 (i.e., almost always material at a >$25k threshold). Counterweight: Coalition's claims data shows overall cyber claims frequency of only ~1.54%, so a 15% mode already assumes this org is far weaker than the insured average - which the 40%-unmanaged/no-EDR posture justifies. The 8-30% range sits sensibly between insurance-claims base rates (~1-2%) and self-reported survey hit rates (30-60%).",
+          "source_title": "Sophos - The State of Ransomware 2025",
+          "source_url": "https://www.sophos.com/en-us/blog/the-state-of-ransomware-2025",
+          "source_date": "2025-06 (corroborated by Verizon DBIR 2026, May 2026, and Microsoft Digital Defense Report 2025, Oct 2025)",
+          "suggested_change": ""
+        },
+        {
+          "repo_claim": "R5: Dormant ex-employee/contractor access misuse or takeover (manual offboarding, direct DB accounts): low 3 / mode 10 / high 22 %",
+          "verdict": "adjust",
+          "evidence": "Available data is vendor-survey grade, not incident-corpus grade. Beyond Identity's offboarding survey: '83% of former employees surveyed said they continued to access accounts at their previous place of employment' and roughly '1 in 3 employers have been hacked due to failure to revoke former employee access' (ever, not annual). Secondary aggregations (LeadingIT/JumpCloud, 2024-2025) cite '~20% of organizations say they've experienced a data breach linked to former employees' and '32% of organizations take over seven days to fully de-provision'. These are lifetime/ever rates; annualized, and cross-checked against Verizon DBIR's Privilege Misuse pattern being a single-digit share of breaches, a 10%/yr mode for a MATERIAL ex-employee incident at a 200-person firm is on the high side even with manual offboarding and direct DB accounts. No primary annual base rate could be verified.",
+          "source_title": "Beyond Identity - Cybersecurity Risks of Improper Offboarding After Layoffs",
+          "source_url": "https://www.beyondidentity.com/resource/cybersecurity-risks-of-improper-offboarding-after-layoffs",
+          "source_date": "circa 2022-2023 (survey; corroborating secondary coverage 2024-2025)",
+          "suggested_change": "Lower mode from 10% to ~5-7% (keep low 3 / high ~15-20%); the exposure (dormant access) is near-certain per surveys, but conversion to a material misuse/takeover event annually is a small fraction of that."
+        },
+        {
+          "repo_claim": "Joint implication: ~65.7% annual probability of >=1 material (> $25k) incident for this 200-person SMB",
+          "verdict": "adjust",
+          "evidence": "Two anchors bracket this. Upper: Hiscox Cyber Readiness Report 2025 (Sept/Oct 2025, 5,750 businesses): '59% said they experienced a cyber attack in the last 12 months' - but that counts ANY attack including immaterial ones. Lower: Coalition Cyber Claims Report (2025 edition): overall claims frequency 1.54%; 'businesses with less than $25 million in revenue... saw a 1.21% rate' vs 5.72% for >$100M revenue - and a $20M-ARR company sits in that <$25M band; Coalition's 2026 report (March 2026) confirms '64% of closed claims resulted in no out-of-pocket loss'. Even granting heavy claims under-reporting, uninsured incidents, and this org's well-below-average posture (a 10-20x uplift over the 1.2% insured base rate), a defensible joint probability of a >=$25k incident is roughly 15-35%, not ~66%. Two structural biases inflate the model: (a) each per-risk mode is anchored on threat-report shares whose denominator is 'orgs already breached', and (b) multiplying complements of five risks treats them as independent when they share the same root causes (weak identity controls, small IT team), double-counting.",
+          "source_title": "Coalition 2025 Cyber Claims Report (frequency figures; Risk & Insurance coverage) and Hiscox Cyber Readiness Report 2025",
+          "source_url": "https://www.coalitioninc.com/blog/cyber-insurance/2025-cyber-claims-report",
+          "source_date": "2025 (Coalition 2025 report; Coalition 2026 edition March 2026; Hiscox report Sept 2025)",
+          "suggested_change": "Recalibrate so the joint probability of >=1 material incident lands ~25-40%: adopt the suggested mode reductions for R2 (~15%), R3 (~10-12%), R5 (~5-7%), and/or model the shared-root-cause correlation between R1/R3/R4 instead of multiplying independent complements. With modes 30/15/11/15/6 and correlation, joint ~35-45%; fully independent it is still ~55%, so some correlation adjustment or further mode shaving is needed."
+        }
+      ],
+      "summary": "Verified all 6 claims against 2025-2026 primary sources: Verizon DBIR 2026 (May 2026 - vuln exploitation now #1 initial vector at 31%, phishing 16%, credential abuse in 39% of breaches, ransomware in 48%, 96% of ransomware victims are SMBs), Proofpoint ATO research (62% of orgs suffered a successful account takeover; 65% of compromised accounts had MFA enabled - strongly supports R1), Microsoft Digital Defense Report 2025, Sophos State of Ransomware 2025 ($638k average recovery cost for 100-250-employee victims), GitGuardian Secrets Sprawl 2026 (28.65M secrets leaked to public GitHub in 2025; 64% of 2022 secrets still valid), Coalition cyber claims data (1.21% claims frequency for <$25M-revenue firms), and Hiscox 2025 (59% of businesses attacked in 12 months). IBM Cost of a Data Breach 2026 is not yet published as of 2026-07-06. Verdicts: R1 confirmed, R4 confirmed; R2, R3, R5 adjust (modes too high by roughly 1.3-2x - threat-report shares use breached-org denominators); joint 65.7% adjust (too high vs claims/survey base rates - recommend recalibrating to ~25-40% via lower modes and modeling correlation between identity-rooted risks)."
+    },
+    "effectiveness": {
+      "findings": [
+        {
+          "repo_claim": "R1: Phishing-resistant MFA (passkeys/FIDO2) via Entra Conditional Access authentication strengths reduces account-compromise baseline by 60/80/92% (low/mode/high).",
+          "verdict": "confirmed",
+          "evidence": "Google/NYU/UCSD year-long study (Google Security Blog, May 17, 2019, ~350,000 real hijacking attempts): security keys were 'effective against 100 percent of automated bots, bulk phishing attacks and targeted attacks,' and Google Cloud's blog (fetched) states 'zero users that exclusively use security keys fell victim to targeted phishing during our investigation.' Microsoft Research (arXiv 2305.00945, May 2023) found 'MFA reduces the risk of compromise by 99.22% across the entire population and by 98.56% in cases of leaked credentials' \u2014 for any MFA, not just phishing-resistant. Counter-evidence supporting the <100% ceiling: Microsoft-tracked Storm-2372 device-code phishing (active since Aug 2024) and Authentication Broker/PRT abuse succeed WITHOUT touching the authentication-strength control, and OAuth consent phishing steals tokens rather than credentials (Microsoft Security Blog, 'Defending against evolving identity attack techniques,' May 29, 2025). With ~90-95% rollout coverage plus these residual channels, a 92% high mode and 80 mode are consistent with the evidence; 60 low is a reasonable pessimistic tail for partial passkey adoption.",
+          "source_title": "Google Security Blog: New research: How effective is basic account hygiene at preventing hijacking (with Microsoft Research arXiv 2305.00945 and Microsoft Security Blog May 2025 as corroborating/residual-risk sources)",
+          "source_url": "https://security.googleblog.com/2019/05/new-research-how-effective-is-basic.html",
+          "source_date": "2019-05-17",
+          "suggested_change": "Keep 60/80/92. Optionally raise the mode to ~85 only if the rollout also disables the OAuth device-code flow and restricts user app consent in Conditional Access, since those are the documented bypass channels (Storm-2372) that sidestep authentication strengths."
+        },
+        {
+          "repo_claim": "R2: Azure WAF (managed rules, Prevention mode) + CodeQL/Dependabot gates + least-privilege DB role + Postgres RLS reduces web-app-attack baseline by 45/65/80%.",
+          "verdict": "adjust",
+          "evidence": "Empirical study of OWASP CRS in ModSecurity (Computers & Security, 2025, S0167404825004031): custom rules 'improved detection precision from 60.54% to 97.46%' \u2014 i.e., stock managed CRS rules (the basis of Azure WAF managed rulesets) sit near ~60% out of the box. WAFFLED (arXiv 2503.10846, Mar 2025) 'identified and confirmed 1,207 bypasses' across five major WAFs including AWS, Azure, Cloud Armor, Cloudflare, and ModSecurity using parsing discrepancies with attack payloads left fully intact \u2014 direct evidence that a managed-rules WAF alone cannot be credited with 80% reduction against a motivated attacker. The bundle's other layers (CodeQL/Dependabot preventing vulns from shipping, least-privilege + RLS shrinking blast radius) justify going above WAF-alone efficacy, but no published study quantifies the combined stack. Verizon DBIR 2026 (May 2026) raises this risk's salience: vulnerability exploitation is now the #1 initial access vector at 31% of incidents.",
+          "source_title": "WAFFLED: Exploiting Parsing Discrepancies to Bypass Web Application Firewalls (arXiv), with Computers & Security 2025 OWASP CRS empirical study",
+          "source_url": "https://arxiv.org/abs/2503.10846",
+          "source_date": "2025-03-13",
+          "suggested_change": "Trim to ~40/60/75. Attribute no more than ~50-60% to the WAF layer itself (consistent with the ~60% stock-CRS finding and the Azure WAF bypass evidence); reserve the 75%+ high mode for the case where the CodeQL gate is blocking (required status check) on all 60 engineers' repos, not advisory."
+        },
+        {
+          "repo_claim": "R3: GitHub Actions OIDC federation (delete long-lived SP secrets) + Secret Protection/push protection + Key Vault + scoped RBAC reduces CI/CD-credential-leak baseline by 45/70/85%.",
+          "verdict": "confirmed",
+          "evidence": "GitHub Docs (OpenID Connect, current 2026): with OIDC 'you can eliminate the need to store credentials as long-lived GitHub secrets' and the cloud provider issues 'a short-lived access token that is only valid for a single job, and then automatically expires' \u2014 the risk class (exfiltrated standing SP secret) is structurally removed, not just reduced. GitHub push protection 'blocks pushes that contain secrets before they reach your repository' (GitHub Docs), against a baseline of ~29 million new hardcoded secrets hitting public GitHub in 2025, +34% YoY (GitGuardian data via secondary coverage; GitGuardian primary report is gated). No published study assigns a % efficacy, but the 85% high mode (not ~100%) is correctly discounted for real residuals: workflow-injection/pwn-request attacks can still mint valid OIDC tokens from inside a compromised workflow, and overly-broad OIDC subject-claim trust policies (documented in Wiz's GitHub Actions hardening guide, 2025, citing the tj-actions/changed-files supply-chain incident) re-create standing access.",
+          "source_title": "GitHub Docs: About security hardening with OpenID Connect",
+          "source_url": "https://docs.github.com/en/actions/concepts/security/openid-connect",
+          "source_date": "2026 (living documentation, current as of 2026-07)",
+          "suggested_change": ""
+        },
+        {
+          "repo_claim": "R4: Conditional Access compliant-device gating + Intune to ~100% + Defender for Business EDR + local-admin removal reduces endpoint-compromise baseline by 45/65/80%.",
+          "verdict": "adjust",
+          "evidence": "Picus Blue Report 2025 (160M+ attack simulations in real enterprise environments): overall prevention effectiveness was 62% (down from 69% in 2024), 'only 14% of attacks generated alerts,' and data-exfiltration prevention fell to 3%. The claimed mode of 65 aligns almost exactly with the 62% measured real-world prevention. Against the high mode: Karantzas & Patsakis (J. Cybersecurity & Privacy / arXiv 2108.10422, 2021, fetched): 'state of the art endpoint security systems fail to prevent and log the bulk of the attacks that are reported in this work' when tested against APT-style attack vectors. MITRE ATT&CK Evaluations publish per-substep detection data but deliberately no composite protection score, so no primary source supports 80% for an EDR-centric stack run by a 3-person IT team with no security engineer and no SOC to triage the alerts that do fire.",
+          "source_title": "Picus Blue Report 2025 (with Karantzas & Patsakis 2021 EDR empirical assessment)",
+          "source_url": "https://www.picussecurity.com/blue-report",
+          "source_date": "2025 (report published 2025; press coverage Sept-Oct 2025)",
+          "suggested_change": "Keep the mode at 65 (matches Picus's 62% measured prevention) but cap the high mode at ~75 for this org: the 80% case implicitly assumes someone triages EDR alerts, and Picus found only 14% of simulated attacks generated any alert \u2014 a bad fit for a 3-person IT team without a security engineer."
+        },
+        {
+          "repo_claim": "R5: Entra auth on PostgreSQL (kill standing DB logins) + SCIM provisioning + automated leaver workflow + quarterly access reviews reduces stale-access/insider baseline by 40/57/72%.",
+          "verdict": "unverified",
+          "evidence": "No published quantitative study measures the % risk reduction of an identity-governance/offboarding bundle; the numbers can only be defended as expert judgment. Directional evidence that the baseline problem is large and thus automatable away: Beyond Identity survey (via Help Net Security, Feb 21, 2022): '83% of employees admitted to maintaining continued access to accounts from a previous employer' and roughly 1 in 4 employers reported ex-staff could still access accounts; OneLogin research found 50% of ex-employees' accounts remain active longer than a day and 32% of orgs take 7+ days to fully deprovision. Verizon DBIR 2026 (May 2026) keeps the risk material: credential abuse appears in 39% of breaches across the full attack chain even though it fell to 13% (16% pre-reclassification) as an initial access vector. Structurally, Entra-only DB auth plus automated leaver workflow removes standing credentials at the moment of ID disable, which supports a substantial mode; quarterly (not continuous) access reviews leave up to ~90-day windows for missed entitlements, which argues against a high mode much above ~70.",
+          "source_title": "Help Net Security: 83% of employees continue accessing old employer's accounts (Beyond Identity survey)",
+          "source_url": "https://www.helpnetsecurity.com/2022/02/21/employees-maintaining-accounts-access/",
+          "source_date": "2022-02-21",
+          "suggested_change": "Keep 40/57/72 but label it explicitly as expert judgment (no quantitative efficacy literature exists); consider capping the high mode at ~70 while access reviews remain quarterly, and raising it only if reviews move to event-driven/continuous."
+        }
+      ],
+      "summary": "Verified 5 mitigation-effectiveness claims against primary and near-primary sources. R1 (phishing-resistant MFA, 60/80/92): CONFIRMED \u2014 Google's 2019 study (350k hijacking attempts) shows security keys blocked 100% of automated bots, bulk phishing, and targeted attacks, and Microsoft Research (arXiv 2305.00945, 2023) measured a 99.22% compromise-risk reduction from MFA; the <100% ceiling is correctly justified by documented residuals (Storm-2372 device-code phishing, OAuth consent abuse, PRT abuse) that bypass authentication strengths entirely. R2 (WAF + CodeQL + RLS, 45/65/80): ADJUST to ~40/60/75 \u2014 stock OWASP CRS detection sits near 60% (Computers & Security 2025) and WAFFLED (arXiv, 2025) confirmed 1,207 bypasses across major WAFs including Azure's, so the WAF layer alone can't carry 80%. R3 (Actions OIDC + push protection, 45/70/85): CONFIRMED architecturally \u2014 GitHub docs establish OIDC structurally eliminates the long-lived-secret class (tokens valid for a single job), with the 85% cap correctly discounting workflow-injection and OIDC-trust-policy residuals; no quantitative % exists in the literature. R4 (compliant-device + Intune + Defender EDR, 45/65/80): ADJUST high mode to ~75 \u2014 Picus Blue Report 2025 (160M simulations) measured real-world prevention at 62% (matching the 65 mode almost exactly) but only 14% of attacks generated alerts, and Karantzas & Patsakis found EDRs 'fail to prevent and log the bulk' of APT attack vectors; 80% is optimistic for a 3-person IT team with no alert triage. R5 (Entra DB auth + SCIM + leaver workflow, 40/57/72): UNVERIFIED \u2014 no quantitative efficacy study exists for identity-governance bundles; baseline-problem data (83% of ex-employees retain access, Beyond Identity 2022; credential abuse in 39% of breaches across the chain, DBIR 2026) supports the mitigation directionally, but the numbers should be labeled expert judgment, with the high mode capped near ~70 while reviews are quarterly. Newest editions checked: Verizon DBIR 2026 is out (vuln exploitation now #1 initial access at 31%, credential abuse 13% initial / 39% full-chain); IBM CoDB 2026 was not yet needed for these mitigation-efficacy claims."
+    },
+    "breach-costs": {
+      "findings": [
+        {
+          "repo_claim": "A $0.5-2M 'primary' impact band (band 4: IR forensics, recovery, downtime) is realistic for a serious breach at a ~200-person, ~$20M ARR SaaS.",
+          "verdict": "confirmed",
+          "evidence": "NetDiligence 2025 Cyber Claims Study (claims 2020-2024, 10,402 claims, SME = <$2B revenue): 'The five-year average BI cost for ransomware incidents was $1.4M with a total incident cost of $2.1M. In 2024, these numbers were $751K and $1.1M'; recovery-expense claims: 'Ransomware incidents accounted for 78% of the claims with reported recovery expense. The five-year average incident cost of these events was $961K, 400% higher than incidents without recovery expense'; and 'the five-year average incident cost of a claim with BI was over 650% greater than a claim without BI.' For Nano-Rev companies (<$50M revenue, the segment matching $20M ARR): N=4,009 claims, average incident cost $142K, maximum $10.4M. So the average small-company claim sits in bands 2-3, but a serious breach with downtime/recovery lands squarely in $0.5-2M, with observed tail well above $2M.",
+          "source_title": "NetDiligence Cyber Claims Study 2025 Report (full PDF, RSM-hosted)",
+          "source_url": "https://rsmus.com/content/dam/rsm/insights/services/risk-fraud-cybersecurity/1pdf/net-diligence-cyber-claims-study-2025-report.inline.pdf",
+          "source_date": "2025-09 (15th annual study, released September 2025; incidents 2020-2024)",
+          "suggested_change": "Keep band 4 as-is, but document that it represents a 'serious' (BI/recovery-involved) event, not the typical claim: NetDiligence average for <$50M-revenue firms is only $142K (band 3), while BI-involved ransomware averages $2.1M (band 4/5 boundary)."
+        },
+        {
+          "repo_claim": ">$2M total loss (band 5) is plausible for a multi-tenant customer-data breach affecting ~500k end-user PII records plus ~1,200 business customers (R3 scored 4.4/5).",
+          "verdict": "confirmed",
+          "evidence": "IBM Cost of a Data Breach Report 2025: customer PII was 'the most stolen or compromised data type' at 53% and costs 'USD 160' per record (IP highest at 'USD 178 per record'); average lost-business cost segment $1.38M and notification segment $0.39M against a $4.44M global average. IBM explicitly warns the per-record figure is 'derived from our study of hundreds of data breach events in which each event featured a maximum of 113,000 compromised records' and cannot be linearly extrapolated \u2014 but even heavily discounted per-record notification/credit-monitoring costs of a few dollars per record exceed $1M at 500k records. NetDiligence 2025 shows observed incident costs for <$50M-revenue firms reaching a $10.4M maximum, and notes SaaS/supply-chain events where 'recovery can take weeks, causing considerable business and productivity losses.' Churn arithmetic corroborates: losing ~10% of 1,200 B2B customers on $20M ARR is ~$2M ARR alone. Panel score of 4.4 (band 4-5) is consistent, arguably conservative.",
+          "source_title": "IBM Cost of a Data Breach Report 2025 (official report PDF) and NetDiligence Cyber Claims Study 2025",
+          "source_url": "https://www.bakerdonelson.com/webfiles/Publications/20250822_Cost-of-a-Data-Breach-Report-2025.pdf",
+          "source_date": "2025-07 (IBM/Ponemon 2025 edition); NetDiligence 2025-09",
+          "suggested_change": "None required; R3 at 4.4 is well supported. If anything, note that a full 500k-record multi-tenant breach is a plausible band-5 (> $2M) event, so 4.4 should not be revised downward."
+        },
+        {
+          "repo_claim": "Typical SMB ransomware total cost (ransom + recovery + downtime) supports R4 primary impact ~3.6, i.e., roughly $100k-2M.",
+          "verdict": "confirmed",
+          "evidence": "Coveware quarterly reports: Q4 2025 (published 2026-02-03) \u2014 median ransom payment '$325,000', average '$591,988', payment rate '~20%... a new historical low', and median victim size '200 employees' (exactly this company's headcount); Q1 2026 (published 2026-04-30) \u2014 average '$680,081', median '$300,750', payment rate '23%', with the 11-100 and 101-1,000 employee tiers accounting for two-thirds of attacks. NetDiligence 2025: SME ransomware claims (N=2,571) yearly average incident cost ranged ~$404K-$1,457K with a five-year average of ~$631K; ransomware claims with business interruption averaged $2.1M total. IBM 2025 puts attacker-disclosed extortion/ransomware at '$5.08 million' but that skews to larger firms; note 63% of victims now refuse to pay. A $100K-2M primary range (score ~3.6 spanning bands 3-4) matches the SMB-specific distribution well.",
+          "source_title": "Coveware Quarterly Ransomware Reports (Q4 2025 and Q1 2026); NetDiligence Cyber Claims Study 2025",
+          "source_url": "https://coveware.com/2026/02/why-zero-day-downstream-mass-data-extortion-campaigns-are-losing-their-bite/",
+          "source_date": "2026-02-03 (Q4 2025 data) and 2026-04-30 (Q1 2026 data, https://coveware.com/2026/04/patch-management-goes-from-hard-to-ludicrous-in-the-agentic-ai-era/)",
+          "suggested_change": "Keep R4 at ~3.6. Optionally note in the risk register that Coveware's Q4 2025 median ransomware victim was a 200-employee company \u2014 this size is the modal target, which argues for keeping R4 likelihood (not impact) high."
+        },
+        {
+          "repo_claim": "The newest IBM Cost of a Data Breach average is the benchmark for breach cost, and SMB-specific sources define the realistic range for a company this size.",
+          "verdict": "adjust",
+          "evidence": "Newest accessible edition is IBM CoDB 2025 (released July 2025): 'The global average breach cost dropped to USD 4.44 million' (first decline in five years, -9%) and the US average rose '9% to USD 10.22 million, an all-time high for any region.' As of 2026-07-06 the 2026 edition has not been published \u2014 ibm.com/reports/data-breach still serves the 2025 report (the 2026 edition is expected later in July per IBM's usual cycle). Important corrections: (a) the 2025 report contains NO cost-by-employee-headcount breakdown; the widely quoted '$3.31M for organizations with fewer than 500 employees' comes from the 2023 edition and is misattributed to 2025 by secondary sites; (b) IBM's sample (600 orgs, breaches up to 113k records) skews large \u2014 it is the wrong anchor for a $20M ARR company. The SMB-realistic range from NetDiligence 2025: average total incident cost for SMEs $264K (up from $205K), five-year all-claims SME average $246K, Nano-Rev (<$50M) average $142K with max $10.4M, crisis services ~47% of SME incident cost.",
+          "source_title": "IBM Cost of a Data Breach Report 2025; NetDiligence Cyber Claims Study 2025",
+          "source_url": "https://www.bakerdonelson.com/webfiles/Publications/20250822_Cost-of-a-Data-Breach-Report-2025.pdf",
+          "source_date": "IBM 2025-07; NetDiligence 2025-09 (netdiligence.com press release 2025-09; full PDF at rsmus.com)",
+          "suggested_change": "In any narrative, cite IBM $4.44M/$10.22M only as macro context and anchor the company-size expectation on NetDiligence: typical claim ~$140-260K, serious event $0.5-2M, worst case $2-10M. Do not cite the '$3.31M under-500-employees' figure as 2025 data (it is from the 2023 edition). Re-check ibm.com/reports/data-breach in late July 2026 for the 2026 edition."
+        },
+        {
+          "repo_claim": "Relative impact ordering \u2014 R3 (multi-tenant customer-data breach) highest at 4.4, then R2 3.8, R4 (ransomware) 3.6, R1/R5 3.4 \u2014 is consistent with cost data.",
+          "verdict": "confirmed",
+          "evidence": "The ordering matches the data: a 500k-record customer-PII breach carries per-record notification/monitoring costs (IBM 2025: customer PII $160/record within its \u2264113k-record sample; notification segment $0.39M avg; lost business $1.38M avg), B2B churn exposure (~$2M ARR at 10% of 1,200 customers), regulatory exposure, and a SOC 2 setback \u2014 plausibly band 5. Typical SMB ransomware sits lower: Coveware Q4 2025 median payment $325K with only ~20% paying, NetDiligence SME ransomware 5-yr average ~$631K \u2014 band 3-4, i.e., below R3. The only tension: NetDiligence shows BI-involved ransomware averaging $2.1M, so R4's tail overlaps R3's; the 0.8-point gap (4.4 vs 3.6) is defensible because R3's expected loss is dominated by irreducible per-record and churn costs, while R4's distribution is bimodal (most events $100-600K, minority with severe BI).",
+          "source_title": "IBM CoDB 2025; NetDiligence Cyber Claims Study 2025; Coveware Q4 2025 report",
+          "source_url": "https://rsmus.com/content/dam/rsm/insights/services/risk-fraud-cybersecurity/1pdf/net-diligence-cyber-claims-study-2025-report.inline.pdf",
+          "source_date": "2025-07 through 2026-04",
+          "suggested_change": "Keep the ordering. Optionally add a footnote that R4 has a fat tail (BI-involved ransomware averages $2.1M at SMEs), so its 90th-percentile loss can equal R3's median \u2014 relevant if the panel later moves from single-point scores to ranges."
+        },
+        {
+          "repo_claim": "Breach-notification and secondary costs (notification/churn/fines/SOC 2 setback) are material enough to justify the secondary component of the impact bands.",
+          "verdict": "confirmed",
+          "evidence": "IBM CoDB 2025 four-segment breakdown (summing to the $4.44M global average): detection and escalation 'fell to USD 1.47 million, a nearly 10% drop', notification $0.39M, post-breach response $1.20M, lost business $1.38M \u2014 i.e., ~58% of average breach cost is post-breach response plus lost business (churn/reputation), not forensics. NetDiligence 2025: crisis services (forensics, notification, monitoring, legal) consumed '47% [of total incident cost] for the five-year interval 2020-2024' at SMEs, 'a dramatic increase... 40% higher than the 2019-2023 average', with SME average crisis services costs ranging '$121K in 2020 to $144K in 2024.'",
+          "source_title": "IBM Cost of a Data Breach Report 2025 (Figure 5 cost segments); NetDiligence Cyber Claims Study 2025 (Figures 11-12)",
+          "source_url": "https://www.bakerdonelson.com/webfiles/Publications/20250822_Cost-of-a-Data-Breach-Report-2025.pdf",
+          "source_date": "2025-07 (IBM); 2025-09 (NetDiligence)",
+          "suggested_change": "None. The primary/secondary split in the impact scale mirrors how both IBM (lost business + post-breach response \u2248 58%) and NetDiligence (crisis services \u2248 47%) decompose real losses."
+        }
+      ],
+      "summary": "All four questions verify against primary 2025-2026 data, and the panel's bands and ordering hold. (1) Band 4 ($0.5-2M) is realistic for a serious breach at a 200-person SaaS: NetDiligence 2025 (SME-heavy, 10,402 claims) shows BI-involved ransomware averaging $2.1M total and recovery-involved claims at $961K, while the typical <$50M-revenue claim averages only $142K \u2014 so band 4 correctly encodes 'serious, not typical.' (2) >$2M is clearly plausible for a 500k-record multi-tenant PII breach: IBM 2025 prices customer PII at $160/record (with an explicit no-extrapolation caveat beyond ~113k records), lost-business alone averages $1.38M, and NetDiligence records a $10.4M max incident cost in the <$50M revenue band; R3 at 4.4 is supported and conservative. (3) SMB ransomware data supports R4 ~3.6: Coveware Q4 2025 median payment $325K (average $592K, ~20% payment rate) with the median victim at exactly 200 employees, and NetDiligence SME ransomware averaging ~$631K over five years \u2014 squarely in the $100K-2M range. (4) Newest accessible IBM CoDB is the 2025 edition ($4.44M global, $10.22M US); the 2026 edition is not yet published as of 2026-07-06, and the oft-quoted '$3.31M for <500 employees' is 2023-edition data absent from the 2025 report \u2014 anchor company-size expectations on NetDiligence ($142-264K typical, $0.5-2M serious, $2-10M tail) instead. The relative ordering (R3 4.4 > R2 3.8 > R4 3.6 > R1/R5 3.4) is consistent with the data; the only caveat worth documenting is ransomware's fat tail ($2.1M average when business interruption is involved), which overlaps R3's band without overturning the ordering. One process suggestion: re-check ibm.com/reports/data-breach in late July 2026 when the 2026 edition ships."
+    },
+    "pricing": {
+      "findings": [
+        {
+          "repo_claim": "Microsoft 365 E5 Security add-on priced at ~$12/user/mo",
+          "verdict": "adjust",
+          "evidence": "Microsoft's enterprise security pricing page no longer lists an 'E5 Security' add-on by that name; the equivalent modular add-on to Microsoft 365 E3 is now sold as 'Microsoft Defender Suite: $12.00 user/month, paid yearly (Annual subscription\u2014auto renews)'. Same page also lists Microsoft Entra Suite and Microsoft Purview Suite at $12.00 each. Page fetched 2026-07-06.",
+          "source_title": "Enterprise Security Plans | Microsoft Security",
+          "source_url": "https://www.microsoft.com/en-us/security/pricing/enterprise-plans",
+          "source_date": "2026-07-06 (fetched)",
+          "suggested_change": "Keep the $12/user/mo number but rename the line item from 'M365 E5 Security add-on' to 'Microsoft Defender Suite add-on ($12/user/mo, annual commitment)'."
+        },
+        {
+          "repo_claim": "Microsoft Entra ID P2 standalone at ~$9/user/mo",
+          "verdict": "adjust",
+          "evidence": "Microsoft Entra pricing page: 'Microsoft Entra ID P2: $10.00 user/month, paid yearly' (annual commitment). P1 is $7.00. Page fetched 2026-07-06.",
+          "source_title": "Microsoft Entra Plans and Pricing | Microsoft Security",
+          "source_url": "https://www.microsoft.com/en-us/security/business/microsoft-entra-pricing",
+          "source_date": "2026-07-06 (fetched)",
+          "suggested_change": "Raise Entra ID P2 from $9 to $10/user/mo (annual commitment). For 200 users that is +$200/mo vs the old assumption."
+        },
+        {
+          "repo_claim": "Microsoft Entra ID Governance add-on at ~$7/user/mo",
+          "verdict": "confirmed",
+          "evidence": "Microsoft Entra pricing page: 'Microsoft Entra ID Governance: $7.00 user/month, paid yearly', noted as 'available for Microsoft Entra ID P1 and P2 customers' (annual commitment). Fetched 2026-07-06.",
+          "source_title": "Microsoft Entra Plans and Pricing | Microsoft Security",
+          "source_url": "https://www.microsoft.com/en-us/security/business/microsoft-entra-pricing",
+          "source_date": "2026-07-06 (fetched)",
+          "suggested_change": ""
+        },
+        {
+          "repo_claim": "Microsoft Entra Suite price (for comparison in identity package)",
+          "verdict": "confirmed",
+          "evidence": "Microsoft Entra pricing page: 'Microsoft Entra Suite: $12.00 user/month, paid yearly', with note 'A subscription to Microsoft Entra ID P1 or a package that includes Microsoft Entra ID P1 is required'. So effective cost on top of M365 E3 (which includes P1) is $12/user/mo. Fetched 2026-07-06.",
+          "source_title": "Microsoft Entra Plans and Pricing | Microsoft Security",
+          "source_url": "https://www.microsoft.com/en-us/security/business/microsoft-entra-pricing",
+          "source_date": "2026-07-06 (fetched)",
+          "suggested_change": "When comparing, note Entra Suite ($12 on top of E3's included P1) vs P2 ($10) + Governance ($7) = $17; Suite is cheaper if both capabilities are wanted."
+        },
+        {
+          "repo_claim": "Microsoft Defender for Business standalone at ~$3/user/mo",
+          "verdict": "confirmed",
+          "evidence": "Microsoft Defender for Business product page: '$3.00 user/month, paid yearly (Annual subscription\u2014auto renews)'. Fetched 2026-07-06.",
+          "source_title": "Microsoft Defender for Business | Microsoft Security",
+          "source_url": "https://www.microsoft.com/en-us/security/business/endpoint-security/microsoft-defender-business",
+          "source_date": "2026-07-06 (fetched)",
+          "suggested_change": ""
+        },
+        {
+          "repo_claim": "Intune Endpoint Privilege Management add-on at ~$3.60/user/mo",
+          "verdict": "adjust",
+          "evidence": "Microsoft Intune pricing page lists standalone add-ons: 'Endpoint Privilege Management: $3.00/user/month' (requires Intune Plan 1; annual subscription, auto-renews). Also lists Intune Plan 2 at $4.00 and notes that starting July 2026 select advanced capabilities are folded into M365 E3/E5 \u2014 EPM is included for E5 only, so an E3 tenant still needs the add-on. Fetched 2026-07-06.",
+          "source_title": "Microsoft Intune Plans and Pricing | Microsoft Security",
+          "source_url": "https://www.microsoft.com/en-us/security/business/microsoft-intune-pricing",
+          "source_date": "2026-07-06 (fetched)",
+          "suggested_change": "Lower EPM add-on from $3.60 to $3.00/user/mo. Add footnote: as of July 2026 EPM is included in M365 E5 (not E3), so the add-on is still required on our E3 baseline; Intune Plan 2 at $4.00 does NOT include EPM per the historical SKU structure \u2014 verify inclusion before substituting."
+        },
+        {
+          "repo_claim": "GitHub Team at ~$4/user/mo and GitHub Enterprise Cloud at ~$21/user/mo",
+          "verdict": "confirmed",
+          "evidence": "github.com/pricing: 'GitHub Team \u2014 $4/user/month'; 'GitHub Enterprise \u2014 $21/user/month'. The page presents these as the headline per-user rates (page notes they apply for the first 12 months at these promotional terms; monthly-billed rates can differ). Fetched 2026-07-06.",
+          "source_title": "Pricing \u00b7 GitHub",
+          "source_url": "https://github.com/pricing",
+          "source_date": "2026-07-06 (fetched)",
+          "suggested_change": "Keep $4 and $21; add a note that these are annual-billing rates and to confirm renewal pricing with GitHub sales."
+        },
+        {
+          "repo_claim": "GitHub Secret Protection at ~$19/active committer/mo and GitHub Code Security at ~$30/active committer/mo, available without Enterprise",
+          "verdict": "confirmed",
+          "evidence": "GitHub changelog 'Introducing GitHub Secret Protection and GitHub Code Security' (2025-03-04): 'GitHub Secret Protection: $19 per month per active committer' and 'GitHub Code Security: $30 per month per active committer', available April 1, 2025, and 'customers on the GitHub Team plan can purchase Secret Protection and Code Security' via metered pay-as-you-go billing \u2014 Enterprise is not required. The current docs billing page confirms metered billing on GitHub Enterprise Cloud and volume/subscription billing for Enterprise only.",
+          "source_title": "Introducing GitHub Secret Protection and GitHub Code Security - The GitHub Blog (changelog)",
+          "source_url": "https://github.blog/changelog/2025-03-04-introducing-github-secret-protection-and-github-code-security/",
+          "source_date": "2025-03-04 (announcement); fetched 2026-07-06",
+          "suggested_change": "For ~60 engineers on GitHub Team, budget Secret Protection at $19 x active committers (max ~$1,140/mo) without needing an Enterprise upgrade; treat Code Security ($30) as optional phase 2."
+        },
+        {
+          "repo_claim": "Azure Front Door Premium base fee ~$330/mo",
+          "verdict": "confirmed",
+          "evidence": "Microsoft Learn 'Compare Pricing Between Azure Front Door Tiers' (ms.date 2025-09-25): pricing table shows 'Base fees (per month): Standard $35, Premium $330', and cost-assessment guidance states 'If you need managed WAF rules, bot protection, or Private Link: $330/month'. Managed WAF rules and Private Link are free/included in Premium; requests billed ~$0.015 per 10,000 (first 250M) plus egress. Azure pricing page (azure.microsoft.com/en-us/pricing/details/frontdoor/) corroborates $330/month base in search results but repeatedly timed out on direct fetch.",
+          "source_title": "Compare Pricing Between Azure Front Door Tiers | Microsoft Learn",
+          "source_url": "https://learn.microsoft.com/en-us/azure/frontdoor/understanding-pricing",
+          "source_date": "2025-09-25 (doc date); fetched 2026-07-06",
+          "suggested_change": ""
+        },
+        {
+          "repo_claim": "Azure Application Gateway WAF_v2 rough monthly cost for a small app (gateway-hours + capacity units)",
+          "verdict": "confirmed",
+          "evidence": "Microsoft Learn 'Understanding pricing - Azure Application Gateway' (ms.date 2025-11-04, East US example prices): WAF_v2 fixed cost $0.443/gateway-hour and $0.0144/capacity-unit-hour. Worked examples: fixed = $0.443 x 730 hrs = $323.39/mo; manual scaling 1 instance (10 CUs) totals $428.51/mo; autoscale min 0 with light traffic ~ $333.90/mo.",
+          "source_title": "Understanding pricing - Azure Application Gateway | Microsoft Learn",
+          "source_url": "https://learn.microsoft.com/en-us/azure/application-gateway/understanding-pricing",
+          "source_date": "2025-11-04 (doc date); fetched 2026-07-06",
+          "suggested_change": "Use ~$330-430/mo for a small WAF_v2 deployment ($323 fixed + $10-105 capacity units) plus egress; note prices are East US examples and vary by region."
+        },
+        {
+          "repo_claim": "Defender for Cloud: Defender for App Service and Defender for open-source relational databases pricing model",
+          "verdict": "confirmed",
+          "evidence": "Azure Defender for Cloud pricing page (via search results quoting the page; direct fetch timed out): Defender for App Service is $14.60 per App Service compute instance per month (billed hourly across all App Service plan tiers); Defender for open-source relational databases (MySQL/PostgreSQL/MariaDB) is $15 per database server instance per month. Microsoft Learn overview (updated 2026-06-17) confirms the OSS-RDB plan covers Azure Database for PostgreSQL Flexible Server on all pricing tiers and points to the same pricing page.",
+          "source_title": "Pricing - Microsoft Defender for Cloud | Microsoft Azure",
+          "source_url": "https://azure.microsoft.com/en-us/pricing/details/defender-for-cloud/",
+          "source_date": "2026-07-06 (search snapshot; Learn overview updated 2026-06-17)",
+          "suggested_change": "Budget ~$14.60/App Service instance/mo + ~$15/PostgreSQL server/mo; for one web app (2 instances) + one Flexible Server that's roughly $44/mo."
+        },
+        {
+          "repo_claim": "FIDO2 hardware security keys (YubiKey 5 series) unit price range",
+          "verdict": "adjust",
+          "evidence": "Yubico store (fetched 2026-07-06): YubiKey 5 NFC $58, 5C NFC $58, 5C $65, 5 Nano $68, 5C Nano $68, 5Ci $85; budget alternative Security Key NFC / Security Key C NFC at $29 each. The commonly assumed ~$50-55 for 5 NFC is out of date.",
+          "source_title": "Yubico Store",
+          "source_url": "https://www.yubico.com/store/",
+          "source_date": "2026-07-06 (fetched)",
+          "suggested_change": "Price YubiKey 5 series at $58-85/key (use $58 for 5C NFC as default); if only FIDO2/passkeys are needed, the $29 Security Key series cuts the hardware line item roughly in half."
+        },
+        {
+          "repo_claim": "Azure Database for PostgreSQL Flexible Server: Microsoft Entra authentication costs nothing extra ($0)",
+          "verdict": "confirmed",
+          "evidence": "Microsoft Learn 'Microsoft Entra Authentication - Azure Database for PostgreSQL' (ms.date 2025-10-06, updated 2026-06-25) describes Entra authentication (including managed identities and the PGAadAuth extension) as a built-in server capability with no pricing meter, no add-on SKU, and no premium Entra license requirement stated anywhere in the doc; enabling it is a server Authentication setting. There is no Entra-auth line item on the Flexible Server pricing page.",
+          "source_title": "Microsoft Entra Authentication - Azure Database for PostgreSQL | Microsoft Learn",
+          "source_url": "https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-azure-ad-authentication",
+          "source_date": "2025-10-06 (doc date), updated 2026-06-25; fetched 2026-07-06",
+          "suggested_change": "Keep at $0; recommend enabling 'Microsoft Entra authentication only' mode plus managed identities for the app tier as a free hardening step."
+        }
+      ],
+      "summary": "Verified 13 pricing claims against Microsoft, GitHub, Azure, and Yubico pages fetched 2026-07-06. Confirmed as assumed: Defender for Business $3, Entra ID Governance add-on $7, GitHub Team $4 / Enterprise $21, Secret Protection $19 and Code Security $30 per active committer (purchasable on Team plan, no Enterprise needed), Front Door Premium $330/mo base, App Gateway WAF_v2 $0.443/gw-hr + $0.0144/CU-hr (~$330-430/mo small app), Defender for App Service $14.60/instance/mo and Defender for OSS relational DBs $15/server/mo, and $0 extra for Entra auth on PostgreSQL Flexible Server. Adjustments needed: Entra ID P2 is now $10 (was assumed $9); Intune EPM add-on is $3.00 (was assumed $3.60), and as of July 2026 EPM is included in M365 E5 but not E3, so our E3 tenant still buys it; the 'M365 E5 Security' add-on now appears as 'Microsoft Defender Suite' at the same $12/user/mo; YubiKey 5 series now runs $58-85 (5 NFC/5C NFC $58), with the $29 Security Key series as a cheaper FIDO2-only option. Entra Suite is $12/user/mo on top of P1 \u2014 cheaper than P2+Governance ($17) if both capability sets are wanted. All Microsoft per-user prices are annual-commitment ('paid yearly') rates; Azure meter prices are East US examples. One caveat: the Azure Defender for Cloud pricing page itself timed out on direct fetch, so those two figures rest on search-result quotes of that page plus the Learn overview."
+    },
+    "threat-landscape": {
+      "findings": [
+        {
+          "repo_claim": "AiTM phishing kits (Evilginx-class; Tycoon 2FA, EvilProxy, Mamba 2FA PhaaS) are commodity, defeat push-based MFA by stealing session cookies, and AiTM volume is large and growing against M365 tenants.",
+          "verdict": "confirmed",
+          "evidence": "Microsoft Security Blog (Mar 4, 2026), 'Inside Tycoon2FA: How a leading AiTM phishing kit operated at scale': Tycoon2FA (Storm-1747) enabled 'tens of millions of phishing messages reaching over 500,000 organizations each month worldwide'; it could 'bypass nearly all commonly deployed MFA methods, including SMS codes, one-time passcodes, and push notifications' by intercepting session cookies, giving persistent access 'even after passwords are reset, unless active sessions and tokens were explicitly revoked.' Commodity pricing: $120 for 10-day access, $350/month, sold via Telegram/Signal. Est. 87.5M phishing messages Oct 2025\u2013Jan 2026; lures impersonated Microsoft 365, Azure, Okta, OneDrive, DocuSign, SharePoint. Secondary coverage of the same disruption reports Tycoon 2FA accounted for ~62% of phishing attempts Microsoft blocked by mid-2025 and ~89% of the AiTM PhaaS market. Microsoft DCU + Europol disrupted the kit in March 2026, but operators retained the codebase and re-tooled within weeks.",
+          "source_title": "Inside Tycoon2FA: How a leading AiTM phishing kit operated at scale \u2014 Microsoft Security Blog",
+          "source_url": "https://www.microsoft.com/en-us/security/blog/2026/03/04/inside-tycoon2fa-how-a-leading-aitm-phishing-kit-operated-at-scale/",
+          "source_date": "2026-03-04",
+          "suggested_change": "Keep likelihood high despite the March 2026 Tycoon 2FA takedown \u2014 Microsoft itself notes operators re-tooled within weeks and EvilProxy/Mamba 2FA remain active. Add a register note that push-notification MFA is explicitly bypassed by these kits, so the mitigation must be phishing-resistant MFA (FIDO2/passkeys) + Entra token protection/CA session controls, not 'MFA' generically."
+        },
+        {
+          "repo_claim": "Infostealers routinely harvest GitHub PATs, cloud credentials and session cookies from developer laptops; stolen-credential marketplaces feed ransomware and cloud intrusions.",
+          "verdict": "confirmed",
+          "evidence": "GitGuardian State of Secrets Sprawl 2026 (blog, Mar 2026): '28.65 million hardcoded secrets' added to public GitHub in 2025, a '34% year-over-year increase \u2014 the largest single-year jump recorded'; '64% of valid secrets from 2022 remain active and exploitable as of January 2026'; 1,275,105 AI-service secrets leaked (+81% YoY). Marketplace/infostealer side (secondary coverage of Flashpoint/KELA, since primaries are gated): Flashpoint counted 1.8B+ credentials stolen by infostealers from 5.8M infected devices in 2025; KELA's State of Cybercrime 2026 tracked 2.86B compromised credentials in 2025, of which 276M (31% of malware-sourced credentials) included active session cookies that bypass MFA. Ransomware linkage: 2026 Verizon DBIR (per SpyCloud's takeaways) found 73% of ransomware victims had an infostealer infection or credential-leak event in the prior year, 50% within 95 days of the attack.",
+          "source_title": "The State of Secrets Sprawl 2026 \u2014 GitGuardian blog (plus DeepStrike/Flashpoint and SpyCloud DBIR-2026 coverage)",
+          "source_url": "https://blog.gitguardian.com/the-state-of-secrets-sprawl-2026/",
+          "source_date": "2026-03 (GitGuardian); 2025-12 (DeepStrike/Flashpoint figures at https://deepstrike.io/blog/infostealer-malware-credential-theft-2025); 2026-05 (SpyCloud DBIR takeaways at https://spycloud.com/blog/top-takeaways-from-the-2026-verizon-data-breach-investigations-report/)",
+          "suggested_change": "Update the register's figure to '~29M secrets leaked on public GitHub in 2025 (+34% YoY, GitGuardian 2026)' and add the DBIR 2026 stat that 73% of ransomware victims had a prior infostealer/credential-leak event \u2014 this directly justifies prioritizing secret scanning + push protection on GitHub and MDM/EDR on all 60 engineer laptops."
+        },
+        {
+          "repo_claim": "Mass scanning exploits internet-facing web apps within days of CVE disclosure; edge/web-app vulnerability exploitation as initial access is rising (DBIR trend).",
+          "verdict": "confirmed",
+          "evidence": "Verizon 2026 DBIR landing page (report released ~May 20, 2026): '31% of breaches now start with software vulnerabilities, beating stolen passwords as the top way attackers get in' \u2014 the first time exploitation is the #1 initial access vector in DBIR history, up from 20% in the 2025 edition (a ~55% YoY rise per secondary coverage, e.g. watchTowr/SC Media). Edge devices/VPNs account for ~22% of vulnerability-exploitation breaches per DBIR-2026 coverage. On speed: VulnCheck's State of Exploitation 2026 found 28.96% of newly known-exploited vulnerabilities in 2025 were exploited on or before the day their CVE was published (up from 23.6% in 2024), with 884 new KEVs observed in 2025.",
+          "source_title": "2026 Data Breach Investigations Report \u2014 Verizon; VulnCheck State of Exploitation 2026",
+          "source_url": "https://www.verizon.com/business/resources/reports/dbir/",
+          "source_date": "2026-05 (DBIR 2026); 2026 (VulnCheck, https://www.vulncheck.com/blog/state-of-exploitation-2026)",
+          "suggested_change": "Strengthen the claim: 'within days' understates it \u2014 ~29% of exploited CVEs in 2025 were attacked on or before disclosure day. Cite DBIR 2026's 31% (exploitation now the #1 initial access vector) and raise this risk's likelihood accordingly; set a patch/virtual-patch SLA of 24-72h for internet-facing components (WAF in front of the public web app, fast patching of anything edge-exposed)."
+        },
+        {
+          "repo_claim": "Ransomware disproportionately hits SMBs and unmanaged endpoints; current median ransom / share of breaches involving ransomware.",
+          "verdict": "adjust",
+          "evidence": "Verizon 2026 DBIR landing page: '48% of all breaches now involve ransomware, but payouts are shrinking' (up from 44% in DBIR 2025). Secondary coverage of DBIR 2026 (Cyber Insurance News / CNIC) reports the median ransom paid at $139,875 and that 96% of ransomware victims where org size was known were SMBs; DBIR 2025 (verizon.com PDF) had median ransom $115,000, 64% of victims not paying, and 88% of SMB breaches involving ransomware vs 39% at large enterprises. Unmanaged endpoints: Microsoft's Digital Defense Report finding that 90%+ of ransomware attacks that reach the ransom stage originate from unmanaged devices (cited in DBIR-2026 secondary coverage). Note: I verified 48% on verizon.com directly; the $139,875 median and 96%-SMB figures come from reputable secondary coverage of the full 2026 report (report PDF gated).",
+          "source_title": "2026 Data Breach Investigations Report \u2014 Verizon (48% figure verified on verizon.com); Verizon 2026 DBIR coverage \u2014 Cyber Insurance News",
+          "source_url": "https://www.verizon.com/business/resources/reports/dbir/",
+          "source_date": "2026-05 (DBIR 2026); secondary figures at https://cyberinsurancenews.org/verizon-2026-dbir-data-breach-report/ (2026-05)",
+          "suggested_change": "Update register numbers to DBIR 2026: ransomware in 48% of breaches (was 44%), SMBs = ~96% of victims of known size, median ransom ~$140K (verify against the full DBIR 2026 PDF before publishing). Keep 'unmanaged endpoints' emphasis \u2014 pair with the DBIR-2026 infostealer stat (73% of victims had prior credential leak) to justify 100% MDM/EDR coverage for the remote workforce."
+        },
+        {
+          "repo_claim": "Ex-employee/dormant-account abuse: departed employees frequently retain access; former staff cause real incidents.",
+          "verdict": "confirmed",
+          "evidence": "Nudge Security survey of 375 US IT professionals (April 2023): 46% reported at least one security incident involving unauthorized access by a former employee or a threat actor exploiting incomplete offboarding (20% 'multiple times', 26% 'one time'); 50% of IT professionals had personally discovered retained access to a former employer's accounts; ~5 hours average to deprovision one departing employee's SaaS access; under one-third have automated 75%+ of offboarding. Wing Security research (May 2024, via The Hacker News, https://thehackernews.com/2024/05/new-research-warns-about-weak.html): 43% of businesses may have ex-employees who can still access code repositories on GitHub/GitLab. Caveat: these are vendor surveys from 2023-2024; I found no fresher 2025-2026 primary survey, and no DBIR breakdown specific to ex-employee abuse.",
+          "source_title": "Employee offboarding by the numbers \u2014 Nudge Security",
+          "source_url": "https://www.nudgesecurity.com/post/employee-offboarding-by-the-numbers",
+          "source_date": "2023-04 (survey); 2024-05 (Wing Security via The Hacker News)",
+          "suggested_change": "Keep the risk but cite it as survey-based and dated (2023-2024, vendor-sponsored); the 43% ex-employee-repo-access figure is directly on point for a 60-engineer GitHub org. Mitigation fits the stack: Entra ID lifecycle workflows + access reviews (needs E5/Entra ID Governance add-on, or manual quarterly reviews on E3) and automated GitHub org offboarding tied to HR termination."
+        }
+      ],
+      "summary": "All five threat-source claims in the risk register hold up against 2026 intelligence; one needs numeric updates. (1) AiTM/Tycoon 2FA: CONFIRMED by Microsoft's own Mar 2026 blog \u2014 tens of millions of messages/month to 500K+ orgs, explicit bypass of push MFA via session-cookie theft, $120 commodity pricing; disrupted Mar 2026 but operators re-tooled. (2) Infostealers/secrets: CONFIRMED \u2014 GitGuardian 2026 counts ~28.65M new secrets on public GitHub in 2025 (+34% YoY, 64% of 2022 secrets still valid); Flashpoint ~1.8B credentials from 5.8M infected devices; DBIR 2026: 73% of ransomware victims had a prior infostealer/credential-leak event. (3) Exploitation speed: CONFIRMED and understated \u2014 DBIR 2026 makes vulnerability exploitation the #1 initial access vector (31%, up from 20%), and VulnCheck found ~29% of 2025 KEVs exploited on/before CVE publication day; 'within days' should become 'within hours-to-days, often day zero'. (4) Ransomware/SMB: ADJUST numbers to DBIR 2026 \u2014 48% of breaches involve ransomware, ~96% of sized victims are SMBs, median ransom ~$139,875 (median figure from secondary coverage; verify in the gated PDF); unmanaged-device emphasis remains supported (Microsoft: 90%+ of ransom-stage attacks originate from unmanaged devices). (5) Ex-employee access: CONFIRMED but on dated vendor surveys (Nudge Security 2023: 46% had an incident tied to incomplete offboarding; Wing 2024: 43% of firms have ex-employees with repo access) \u2014 no fresh 2025-26 primary data found, flag as lower-confidence."
+    },
+    "frameworks": {
+      "attack_mapping": [
+        {
+          "risk_id": "R1",
+          "techniques": [
+            {
+              "id": "T1566.002",
+              "name": "Phishing: Spearphishing Link",
+              "url": "https://attack.mitre.org/techniques/T1566/002/"
+            },
+            {
+              "id": "T1557",
+              "name": "Adversary-in-the-Middle",
+              "url": "https://attack.mitre.org/techniques/T1557/"
+            },
+            {
+              "id": "T1539",
+              "name": "Steal Web Session Cookie",
+              "url": "https://attack.mitre.org/techniques/T1539/"
+            },
+            {
+              "id": "T1550.004",
+              "name": "Use Alternate Authentication Material: Web Session Cookie",
+              "url": "https://attack.mitre.org/techniques/T1550/004/"
+            },
+            {
+              "id": "T1078.004",
+              "name": "Valid Accounts: Cloud Accounts",
+              "url": "https://attack.mitre.org/techniques/T1078/004/"
+            }
+          ]
+        },
+        {
+          "risk_id": "R2",
+          "techniques": [
+            {
+              "id": "T1190",
+              "name": "Exploit Public-Facing Application",
+              "url": "https://attack.mitre.org/techniques/T1190/"
+            },
+            {
+              "id": "T1505.003",
+              "name": "Server Software Component: Web Shell",
+              "url": "https://attack.mitre.org/techniques/T1505/003/"
+            },
+            {
+              "id": "T1213",
+              "name": "Data from Information Repositories",
+              "url": "https://attack.mitre.org/techniques/T1213/"
+            },
+            {
+              "id": "T1048.002",
+              "name": "Exfiltration Over Alternative Protocol: Exfiltration Over Asymmetric Encrypted Non-C2 Protocol",
+              "url": "https://attack.mitre.org/techniques/T1048/002/"
+            }
+          ]
+        },
+        {
+          "risk_id": "R3",
+          "techniques": [
+            {
+              "id": "T1213.003",
+              "name": "Data from Information Repositories: Code Repositories",
+              "url": "https://attack.mitre.org/techniques/T1213/003/"
+            },
+            {
+              "id": "T1552.001",
+              "name": "Unsecured Credentials: Credentials In Files",
+              "url": "https://attack.mitre.org/techniques/T1552/001/"
+            },
+            {
+              "id": "T1078.004",
+              "name": "Valid Accounts: Cloud Accounts",
+              "url": "https://attack.mitre.org/techniques/T1078/004/"
+            },
+            {
+              "id": "T1098.001",
+              "name": "Account Manipulation: Additional Cloud Credentials",
+              "url": "https://attack.mitre.org/techniques/T1098/001/"
+            },
+            {
+              "id": "T1530",
+              "name": "Data from Cloud Storage",
+              "url": "https://attack.mitre.org/techniques/T1530/"
+            }
+          ]
+        },
+        {
+          "risk_id": "R4",
+          "techniques": [
+            {
+              "id": "T1204.002",
+              "name": "User Execution: Malicious File",
+              "url": "https://attack.mitre.org/techniques/T1204/002/"
+            },
+            {
+              "id": "T1555.003",
+              "name": "Credentials from Password Stores: Credentials from Web Browsers",
+              "url": "https://attack.mitre.org/techniques/T1555/003/"
+            },
+            {
+              "id": "T1548.002",
+              "name": "Abuse Elevation Control Mechanism: Bypass User Account Control",
+              "url": "https://attack.mitre.org/techniques/T1548/002/"
+            },
+            {
+              "id": "T1528",
+              "name": "Steal Application Access Token",
+              "url": "https://attack.mitre.org/techniques/T1528/"
+            },
+            {
+              "id": "T1486",
+              "name": "Data Encrypted for Impact",
+              "url": "https://attack.mitre.org/techniques/T1486/"
+            }
+          ]
+        },
+        {
+          "risk_id": "R5",
+          "techniques": [
+            {
+              "id": "T1078.004",
+              "name": "Valid Accounts: Cloud Accounts",
+              "url": "https://attack.mitre.org/techniques/T1078/004/"
+            },
+            {
+              "id": "T1133",
+              "name": "External Remote Services",
+              "url": "https://attack.mitre.org/techniques/T1133/"
+            },
+            {
+              "id": "T1213",
+              "name": "Data from Information Repositories",
+              "url": "https://attack.mitre.org/techniques/T1213/"
+            },
+            {
+              "id": "T1048.002",
+              "name": "Exfiltration Over Alternative Protocol: Exfiltration Over Asymmetric Encrypted Non-C2 Protocol",
+              "url": "https://attack.mitre.org/techniques/T1048/002/"
+            }
+          ]
+        }
+      ],
+      "soc2_review": [
+        {
+          "risk_id": "R1",
+          "mapped_criteria_ok": false,
+          "notes": "DROP CC6.7 \u2014 it is a misfit. Per AICPA text, CC6.7 reads 'The entity restricts the transmission, movement, and removal of information to authorized internal and external users and processes, and protects it during transmission, movement, or removal' (encryption in transit, removable media, DLP) \u2014 phishing-resistant MFA is not a data-movement control. The correct anchors are CC6.1 (logical access security software/architecture) and CC6.6 ('logical access security measures to protect against threats from sources outside its system boundaries' \u2014 its points of focus explicitly cover requiring additional authentication/credentials for external access), both of which are already mapped and fit well. CC7.2 fits only if the mitigation includes monitoring (e.g., Entra risky sign-in / Identity Protection alerts) \u2014 add that control or the criterion is unsupported. CC7.3 ('evaluates security events to determine whether they... resulted in a failure... security incidents') and CC7.4 ('responds to identified security incidents by executing a defined incident-response program') are defensible only as pointers to the org-wide IR program (e.g., a token-theft/session-revocation runbook), not to the MFA control itself; keep them only if that runbook exists as evidence."
+        },
+        {
+          "risk_id": "R2",
+          "mapped_criteria_ok": true,
+          "notes": "Set is sensible. Strong fits: CC6.6 (WAF = boundary protection against external threats), CC7.1 ('uses detection and monitoring procedures to identify (1) changes to configurations that result in the introduction of new vulnerabilities, and (2) susceptibilities to newly discovered vulnerabilities' \u2014 exactly code scanning + pen testing), CC8.1 (authorizes/tests/approves changes \u2014 CI code-scanning gates), CC6.1 (RLS as logical access architecture over protected data). Two caveats: (1) CC7.4 (defined incident-response program) is not evidenced by any of the four listed mitigations \u2014 keep only if a web-app-compromise IR runbook exists, otherwise drop; (2) consider adding CC6.3 ('authorizes, modifies, or removes access... based on roles... least privilege') since tenant isolation via RLS is fundamentally role/least-privilege-based access enforcement \u2014 a natural companion to CC6.1."
+        },
+        {
+          "risk_id": "R3",
+          "mapped_criteria_ok": true,
+          "notes": "Set is sensible overall. Strong fits: CC6.1 (Key Vault/logical access architecture), CC6.2 ('prior to issuing system credentials... registers and authorizes new... users; credentials are removed when user access is no longer authorized' \u2014 covers service-principal credential lifecycle; OIDC federation eliminating long-lived secrets fits), CC6.3 (RBAC/least privilege), CC7.1 (secret scanning = vulnerability detection), CC8.1 (scanning gates in the change pipeline), A1.2 ('data backup processes and recovery infrastructure' \u2014 immutable backups is an exact fit). Caveats: CC6.6 is a partial fit \u2014 its focus is boundary protection, though its 'protects identification and authentication credentials' point of focus makes federation/credential-elimination defensible; be ready to justify it. CC7.2 and CC7.4 need supporting evidence not in the listed mitigation set (service-principal sign-in anomaly monitoring; an IR runbook for credential compromise). MISSING: add A1.3 ('the entity tests recovery plan procedures') \u2014 claiming immutable backups without documented restore testing is a common Type I gap."
+        },
+        {
+          "risk_id": "R4",
+          "mapped_criteria_ok": true,
+          "notes": "Best-fitting set of the five. CC6.8 is the exact anchor ('implements controls to prevent or detect and act upon the introduction of unauthorized or malicious software' = EDR + local-admin removal restricting software installation, a named point of focus). CC6.1 and CC6.6 fit compliant-device Conditional Access gating (logical access measures against external threats), CC7.2 fits EDR telemetry monitoring, and CC7.4 is defensible via EDR containment/response if a defined IR program exists. Caveat on CC7.5 ('identifies, develops, and implements activities to recover from identified security incidents' \u2014 points of focus: restoring the affected environment by rebuilding systems): correct criterion for a ransomware risk, but none of the three listed mitigations (device gating, EDR, local-admin removal) is a recovery activity \u2014 support it by cross-referencing the immutable backups from R3 plus SharePoint/OneDrive versioning-based restore, or it will lack evidence."
+        },
+        {
+          "risk_id": "R5",
+          "mapped_criteria_ok": false,
+          "notes": "CC9.2 is the wrong anchor for offboarding. Per AICPA text it reads 'The entity assesses and manages risks associated with vendors and business partners' \u2014 vendor risk assessment, contractual requirements, and vendor-relationship termination. Employee/contractor deprovisioning belongs squarely under CC6.2 ('user system credentials are removed when user access is no longer authorized' \u2014 the exact leaver scenario) and CC6.3 ('authorizes, modifies, or removes access... based on roles' \u2014 access reviews), which are already mapped and are perfect fits, as is CC6.1 (Entra ID auth on PostgreSQL replacing local DB logins). Keep CC9.2 only for the narrow slice where contractors are engaged through vendor/business-partner agreements whose terms govern access termination; otherwise drop it. CC7.2 is only supported if you add a monitoring control (alerting on dormant-account sign-ins / stale-account reports) \u2014 none of the four listed mitigations is a monitoring activity. No other criterion is obviously missing; CC6.5 does not apply (it covers disposal of physical assets/data, not account offboarding)."
+        }
+      ],
+      "summary": "JOB 1: All 22 technique mappings verified against live attack.mitre.org pages on 2026-07-06 (ATT&CK Enterprise v19.1; every cited page shows 'last modified 12 May 2026'; none deprecated or revoked). Notable ID choices: AiTM phishing = T1566.002 + T1557 + T1539 + T1550.004 chain (T1539 page explicitly names Evilginx-style malicious-proxy phishing; T1550.004 page explicitly notes MFA bypass because 'the session is already authenticated'); repo-secret harvesting = T1213.003 + T1552.001, service-principal abuse = T1078.004 + T1098.001, cloud-storage exfil = T1530; infostealer chain = T1204.002 + T1555.003 + T1548.002 + T1528 + T1486; dormant accounts = T1078.004 + T1133 (direct external PostgreSQL logins) + T1213 + T1048.002. JOB 2: Criterion wording verified verbatim from the AICPA TSP Section 100 document (2017 TSC, copy with March 2020 updates, fetched from assets.ctfassets.net mirror since the aicpa-cima.com primary is registration-gated; the Fall 2022 revision changed only points of focus, not criterion text). Two clear misfits found: (1) R1's CC6.7 \u2014 it governs transmission/movement/removal of information, not authentication; drop it (CC6.6's points of focus already cover MFA for external access). (2) R5's CC9.2 \u2014 vendor/business-partner risk management, not employee offboarding; the leaver scenario is literally CC6.2's text ('credentials are removed when user access is no longer authorized'); keep CC9.2 only for vendor-engaged contractors. Recurring weaker mappings: CC7.2/CC7.3/CC7.4/CC7.5 appear across risks without a listed monitoring or IR/recovery mitigation to evidence them \u2014 either add those controls (sign-in anomaly alerting, IR runbooks, restore testing) or trim the criteria. Suggested additions: A1.3 (recovery-plan testing) to R3, CC6.3 to R2, and cross-reference R3's immutable backups to support R4's CC7.5. Sources: https://attack.mitre.org/techniques/enterprise/ and individual technique pages; https://assets.ctfassets.net/rb9cdnjh59cm/72xv4p67HVXKp6CjWmjkPk/1cdbfa19f6307e2720396b66a6194dc9/trust-services-criteria-updated-copyright.pdf; https://www.aicpa-cima.com/resources/download/2017-trust-services-criteria-with-revised-points-of-focus-2022 (gated); https://www.barradvisory.com/resource/whats-new-with-soc-2/ (secondary, confirming the 2022 update scope)."
+    }
+  },
+  "assessor": {
+    "grade": "Strong hire-grade submission \u2014 the rare kind that ships real, auditable plumbing and genuinely self-critical quantification \u2014 docked for documentation drift, two unfinished sections, and a correlation bug in the bonus analytics.",
+    "strengths": [
+      "The plumbing is real and complete: workflow/risk_pipeline.workflow.js is an actual executed orchestration script with per-agent JSON Schemas, retry logic, and all arithmetic (medians, composites, residuals, aggregates, marginal contributions) in ~40 lines of deterministic, hand-recomputable code \u2014 exactly the estimation/computation separation the brief's 'not a black box' requirement wanted.",
+      "Numbers reconcile: I spot-checked the README ranking table, the full quant table, the aggregate (65.7%\u219225.5%, \u221240.2pp), all five marginal contributions, flag counts (23+9), and all five feasibility-adjusted efforts/costs against outputs/02, 04, 05, 06 \u2014 every one matches, and the exec summary's claims (23 flags, '13 pw vs claimed 9 on R3', '$15k not $12k GitHub Enterprise') trace to real output fields. The 'synthesis quotes, never recomputes' constraint demonstrably held.",
+      "The adversarial machinery produced real signal, not theater: a split challenger verdict on R3's #1 rank with a legitimate methodological argument (TEF/VULN double-counting of chain success), and a red-team pass that forced an actual revision of R5 (baseline 8\u219210%, effectiveness 65\u219257%) with a preserved change log.",
+      "The red team's cross-estimate findings are unusually sophisticated for AI output: contradictory assumed states of the same Postgres Entra-auth control in R3 vs R5, the shared infostealer precondition double-counted across R3/R4, a coverage gap (endpoint-cookie-theft\u2192cloud exfil falls in neither R1 nor R4), joint infeasibility of five 'fully implemented' packages for a 3-person team, and directional bias analysis of the independence assumption in both directions.",
+      "The prioritization framework is explicit and defensible: FAIR-lite TEF/VULN + dollar-banded PRIMARY/SECONDARY scales calibrated to $20M ARR, median-of-3-lenses with spread\u22652 disagreement flags, and the 60/40 impact weight explicitly labeled a policy choice for human ratification.",
+      "The marginal-contribution analysis (ranking \u2260 sequencing: R3 is top-ranked but R1's MFA is the biggest single lever at \u221211.7pp) is a genuinely decision-useful insight the brief didn't ask for, and it's computed, not asserted.",
+      "The feasibility-reviewer role earned its keep: all five packages came back approve_with_changes with realistic corrections (effort up 40\u201350%, GitHub Enterprise SSO licensing trap, break-glass accounts, RLS schema spike gate) \u2014 the kind of pushback a real IT manager gives.",
+      "HUMAN_REVIEW_FLAGS.md directly answers the brief's 'where not to trust the AI' requirement and is machine-generated from run artifacts with specific, actionable verification steps (run the gitleaks sweep, get counsel to validate the notification-duty materiality assumption once, check DBIR current editions).",
+      "The validator agent stripping invented 'facts' from the candidate's own seed register and demoting them to confirm-in-fieldwork notes is excellent epistemic hygiene \u2014 the pipeline policed its author.",
+      "Beyond-brief extras are deterministic and seeded, not more LLM output: 100k-iteration Monte Carlo (independent + correlated variants), tornado sensitivity, EAL/ROSI per mitigation, KRIs with named Azure/M365 data sources, and a consolidated three-wave roadmap."
+    ],
+    "weaknesses": [
+      {
+        "issue": "The README Task 1 table does not match the 'final validated register' it links to (outputs/01_risk_register.json). The table shows the seed register including the exact facts the validator stripped as unsupported \u2014 R3's 'no secret scanning or rotation', R2's 'single high-privilege app DB role / no security code-review/DAST gate / weeks of patch latency', R5's 'shared non-rotated service accounts; no access recertification'. A reader comparing the table to the linked artifact sees different content, which undercuts the submission's central auditability claim. The claim of 'stripped four facts' also miscounts: the validation notes list ~7 removed assertions across 3 entries.",
+        "severity": "high",
+        "fix": "Regenerate the Task 1 table from outputs/01_risk_register.json (or explicitly label the current table 'seed register, pre-validation' and show the validated exposures alongside), and correct the 'four facts' count to match the notes."
+      },
+      {
+        "issue": "ASSUMPTIONS.md contradicts the COMPANY context block the agents actually ran with. A8 ('shared service accounts, no rotation, no recertification'), A9 ('no secret scanning; Key Vault inconsistent'), and A10 ('single high-privilege DB role; no DAST gate') are declared as stated assumptions, yet the COMPANY block in the workflow/prompts omits them \u2014 and the validator then removed them from the register as 'not in the profile'. So the scoring, mitigation, and quantification agents reasoned about a company profile that differs from the one ASSUMPTIONS.md tells the reader was assumed.",
+        "severity": "medium",
+        "fix": "Either add A8\u2013A10 to the COMPANY block (and note the validator behavior was a bug), or downgrade those rows in ASSUMPTIONS.md to 'to be confirmed in fieldwork' so the three documents agree on what was actually assumed."
+      },
+      {
+        "issue": "The README repo-layout tree and write-up silently omit four shipped deliverables: ROADMAP.md, dashboard.html, workflow/advanced_analytics.py, and outputs/08_advanced_analytics.json. A reader following the README \u2014 the stated entry point \u2014 never discovers the Monte Carlo/ROSI analysis, the KRIs, the sequencing roadmap, or the dashboard.",
+        "severity": "medium",
+        "fix": "Update the tree and add a short 'additional artifacts' paragraph linking each with one line on what it contains and how it was produced."
+      },
+      {
+        "issue": "ROADMAP.md promises 'how the work maps to MITRE ATT&CK and SOC 2 evidence' in its intro, then ends with two empty placeholder sections: '## MITRE ATT&CK mapping' containing only <!-- ATTACK_MAPPING --> and '## SOC 2 evidence matrix' containing only <!-- SOC2_MATRIX -->. Shipped unfinished scaffolding directly contradicting the document's own opening paragraph.",
+        "severity": "medium",
+        "fix": "Fill both sections (the SOC 2 CC-series data already exists in outputs/04_mitigations.json) or delete the headings and the intro promise."
+      },
+      {
+        "issue": "The 'correlated' Monte Carlo variant does not deliver the correlation it claims. The docstring and the output assumptions block both state 'rank corr ~0.4', but the mixture sampler shares the common shock per-risk with probability 0.4 independently, so two risks share it only ~16% of the time \u2014 effective pairwise rank correlation \u22480.16, not 0.4. The near-identical independent vs correlated results (baseline mean 71.0% vs 70.7%) confirm the injected correlation is weak, meaning the analysis largely fails to address the red team's independence concern it cites as its motivation.",
+        "severity": "medium",
+        "fix": "Either draw one Bernoulli per iteration (all risks share the shock together with prob w) or use a Gaussian copula; then re-run and update the claimed correlation in the docstring and output JSON."
+      },
+      {
+        "issue": "The deterministic model consumed and headlines numbers (65.7% baseline, quoted to 3 significant figures in the exec summary's opening) that the pipeline's own red team declared structurally miscalibrated \u2014 above the SMB all-vector ceiling R2's basis cites, with double-counted events and a formula it called 'structurally wrong for this set'. The dissent is honestly documented, but cross-risk issues trigger no remediation path: only single-risk issues auto-revise, so the headline number ships un-corrected while the correction lives in a flags file an executive may never open.",
+        "severity": "medium",
+        "fix": "Add a portfolio-level adjustment step (even a manual one: shade baselines to the red team's suggested 35\u201355% ceiling as a second scenario row), or at minimum print the red team's 'true baseline is lower' caveat inline next to the 65.7% in the exec summary's first sentence."
+      },
+      {
+        "issue": "Minor numeric drift within the README: 'Roughly 25 agents per run' (line 5) vs '24 agents' (line 80); and the time-box accounting (~3.5h itemized) covers only the register, pipeline, and write-up \u2014 the dashboard, roadmap, KRIs, and Monte Carlo script appear in no time budget, straining the 'within the 3\u20134h box' claim.",
+        "severity": "low",
+        "fix": "Reconcile the agent count to 24 and either account for the extras in the time budget or mark them as work done outside the box."
+      },
+      {
+        "issue": "dashboard.html is a bare fragment starting at <title> with no doctype/html/head/body wrapper \u2014 it happens to render, but as a standalone deliverable it is malformed HTML and nothing in the repo explains how it was generated or that it exists.",
+        "severity": "low",
+        "fix": "Wrap it in a minimal valid HTML skeleton and add a one-line provenance note (hand-built from outputs/*.json) in its footer and in the README."
+      }
+    ],
+    "missing_features": [
+      {
+        "feature": "Sensitivity analysis on the prioritization framework itself (the 60/40 PRIMARY/SECONDARY weight and median-vs-mean choice)",
+        "why_relevant": "ASSUMPTIONS.md explicitly calls the 60/40 weight 'a policy choice a human should ratify', and R3 leads R1 by only 2.3 composite points (and R1 leads R2 by 0.1) \u2014 showing whether the #1 answer survives a weight sweep from 50/50 to 70/30 is the single most defensible-reasoning upgrade available, and the scoring JSON already contains everything needed.",
+        "effort": "S"
+      },
+      {
+        "feature": "Near-tie detection in the deterministic ranking (flag when adjacent composites are within some epsilon)",
+        "why_relevant": "The pipeline flags factor-level scorer disagreement but nothing flags that ranks 2 and 3 are separated by 0.1 composite points \u2014 a rounding artifact could reorder them. The brief demands an auditable, non-black-box ranking; an honest ranking says when its own ordering is noise.",
+        "effort": "S"
+      },
+      {
+        "feature": "A runnable harness shim or reproduction instructions (package.json, a mock/replayable agent() implementation, how to run advanced_analytics.py, how the dashboard regenerates)",
+        "why_relevant": "The brief asked for 'the plumbing, not just output'. The workflow.js depends on a proprietary agent()/parallel()/phase() harness the evaluator cannot execute; a 30-line shim that replays the saved outputs/ JSONs would prove the orchestration logic end-to-end and make the 're-runnable by design' claim testable.",
+        "effort": "M"
+      },
+      {
+        "feature": "A portfolio-reconciliation agent (or documented human adjudication worksheet) that resolves the cross-risk red-team issues before the deterministic model runs",
+        "why_relevant": "The submission's own best finding \u2014 that multi-risk issues (R3+R5 contradictory control states, shared infostealer node, joint capacity infeasibility) map to no reviser and ship unresolved \u2014 is left as a 'known limitation'. One additional agent that fixes a canonical control timeline and a dedup rule, then re-triggers targeted revisions, closes the loop the pipeline already identified.",
+        "effort": "M"
+      },
+      {
+        "feature": "At least one human-verified external anchor per baseline (a real, cited current-edition DBIR/Sophos/IBM figure checked by the author, marked as verified)",
+        "why_relevant": "Every quantitative parameter is flagged as unverified model memory \u2014 correctly \u2014 but the brief's spirit is 'flag where AI output should not be trusted AND show what human review looks like'. Verifying even one anchor per risk would demonstrate the review process the flags demand, converting one row of the flags file from prescription to worked example.",
+        "effort": "S"
+      }
+    ],
+    "quick_polish": [
+      "Regenerate the README Task 1 table from outputs/01_risk_register.json (or caption it 'seed register, pre-validation') and fix 'stripped four facts' to match the actual count in the validation notes.",
+      "Fill or delete the two placeholder sections in ROADMAP.md (<!-- ATTACK_MAPPING --> and <!-- SOC2_MATRIX -->); the SOC 2 matrix can be assembled in minutes from the soc2_criteria arrays already in outputs/04_mitigations.json.",
+      "Add ROADMAP.md, dashboard.html, workflow/advanced_analytics.py, and outputs/08_advanced_analytics.json to the README repo-layout tree with one-line descriptions.",
+      "Reconcile ASSUMPTIONS.md A8\u2013A10 with the COMPANY prompt block: mark the stripped items 'to confirm in fieldwork' so all three documents agree.",
+      "Fix 'Roughly 25 agents' vs '24 agents' in the README (the run trace supports 24).",
+      "Correct the 'rank corr ~0.4' claim in advanced_analytics.py's docstring and output JSON to the ~0.16 the mixture sampler actually delivers (or note it as a known understatement pending the copula fix).",
+      "Wrap dashboard.html in a valid doctype/html/head/body skeleton.",
+      "Add one sentence to the README time-spent note accounting for (or explicitly excluding) the dashboard, roadmap, and Monte Carlo extras from the 3\u20134h box."
+    ]
+  }
+}

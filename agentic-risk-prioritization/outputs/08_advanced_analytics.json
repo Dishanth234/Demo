@@ -1,0 +1,787 @@
+{
+  "_provenance": "Deterministic code (workflow/advanced_analytics.py v2, seed 20260706) over outputs/05_quantification.json (v1.0) and the research-calibrated parameters documented in SOURCES.md (v1.1). No LLM produced any number in this file.",
+  "assumptions": {
+    "distributions": "Triangular(low, mode, high) per parameter; 100k iterations per variant",
+    "correlated_variant": "per-iteration Bernoulli(0.4): with prob 0.4 ALL baselines share one 'threat environment' quantile shock (second Bernoulli for ALL effectiveness values sharing an 'execution capacity' shock); mixture of comonotonic and independent gives pairwise rank corr ~= 0.4. v1 of this script shared shocks per-risk independently (~0.16 pairwise) \u2014 assessor-caught bug, fixed",
+    "loss_bands_usd_midpoints": {
+      "1": 12500,
+      "2": 62500,
+      "3": 300000,
+      "4": 1250000,
+      "5": 3000000
+    },
+    "open_band_5_valued_at": "3,000,000 (~15% of ARR) \u2014 stated policy choice for the '>$2M' band",
+    "loss_per_event": "midpoint(primary impact median) + midpoint(secondary impact median)",
+    "labor_cost_per_person_week_usd": 3000,
+    "year1_cost": "cash midpoint of feasibility-adjusted range + person-weeks x labor rate",
+    "rosi": "(EAL avoided - year-1 cost) / year-1 cost; point estimates on mode values"
+  },
+  "versions": {
+    "v1.0_pipeline": {
+      "parameter_notes": {
+        "R3": "as produced by the agent pipeline (post internal red-team)",
+        "R1": "as produced by the agent pipeline (post internal red-team)",
+        "R2": "as produced by the agent pipeline (post internal red-team)",
+        "R4": "as produced by the agent pipeline (post internal red-team)",
+        "R5": "as produced by the agent pipeline (post internal red-team)"
+      },
+      "deterministic": {
+        "per_risk": [
+          {
+            "risk_id": "R3",
+            "baseline_pct": {
+              "low": 8,
+              "mode": 20,
+              "high": 40
+            },
+            "effectiveness_pct": {
+              "low": 45,
+              "mode": 70,
+              "high": 85
+            },
+            "residual_pct": {
+              "low": 1.2,
+              "mode": 6.0,
+              "high": 22.0
+            }
+          },
+          {
+            "risk_id": "R1",
+            "baseline_pct": {
+              "low": 15,
+              "mode": 30,
+              "high": 55
+            },
+            "effectiveness_pct": {
+              "low": 60,
+              "mode": 80,
+              "high": 92
+            },
+            "residual_pct": {
+              "low": 1.2,
+              "mode": 6.0,
+              "high": 22.0
+            }
+          },
+          {
+            "risk_id": "R2",
+            "baseline_pct": {
+              "low": 8,
+              "mode": 20,
+              "high": 40
+            },
+            "effectiveness_pct": {
+              "low": 45,
+              "mode": 65,
+              "high": 80
+            },
+            "residual_pct": {
+              "low": 1.6,
+              "mode": 7.0,
+              "high": 22.0
+            }
+          },
+          {
+            "risk_id": "R4",
+            "baseline_pct": {
+              "low": 8,
+              "mode": 15,
+              "high": 30
+            },
+            "effectiveness_pct": {
+              "low": 45,
+              "mode": 65,
+              "high": 80
+            },
+            "residual_pct": {
+              "low": 1.6,
+              "mode": 5.25,
+              "high": 16.5
+            }
+          },
+          {
+            "risk_id": "R5",
+            "baseline_pct": {
+              "low": 3,
+              "mode": 10,
+              "high": 22
+            },
+            "effectiveness_pct": {
+              "low": 40,
+              "mode": 57,
+              "high": 72
+            },
+            "residual_pct": {
+              "low": 0.84,
+              "mode": 4.3,
+              "high": 13.2
+            }
+          }
+        ],
+        "aggregate": {
+          "baseline_mode_pct": 65.7,
+          "residual_mode_pct": 25.5,
+          "absolute_reduction_pp": 40.2,
+          "relative_reduction_pct": 61.2,
+          "bounds": {
+            "baseline": {
+              "low_pct": 35.8,
+              "high_pct": 91.2
+            },
+            "residual": {
+              "low_pct": 6.3,
+              "high_pct": 65.6
+            }
+          }
+        },
+        "marginal_contribution": [
+          {
+            "risk_id": "R3",
+            "delta_pp_vs_baseline": 6.0
+          },
+          {
+            "risk_id": "R1",
+            "delta_pp_vs_baseline": 11.8
+          },
+          {
+            "risk_id": "R2",
+            "delta_pp_vs_baseline": 5.6
+          },
+          {
+            "risk_id": "R4",
+            "delta_pp_vs_baseline": 3.9
+          },
+          {
+            "risk_id": "R5",
+            "delta_pp_vs_baseline": 2.2
+          }
+        ]
+      },
+      "monte_carlo": {
+        "independent": {
+          "baseline_agg_pct": {
+            "mean": 71.0,
+            "p5": 61.6,
+            "p25": 67.4,
+            "p50": 71.3,
+            "p75": 74.9,
+            "p95": 79.5
+          },
+          "residual_agg_pct": {
+            "mean": 30.4,
+            "p5": 23.5,
+            "p25": 27.4,
+            "p50": 30.3,
+            "p75": 33.4,
+            "p95": 37.8
+          },
+          "reduction_pp": {
+            "mean": 40.5,
+            "p5": 34.5,
+            "p25": 37.9,
+            "p50": 40.5,
+            "p75": 43.1,
+            "p95": 46.9
+          },
+          "prob_reduction_ge_30pp": 99.9,
+          "prob_residual_le_35pct": 85.0
+        },
+        "correlated": {
+          "baseline_agg_pct": {
+            "mean": 70.2,
+            "p5": 54.5,
+            "p25": 65.7,
+            "p50": 70.9,
+            "p75": 75.7,
+            "p95": 83.3
+          },
+          "residual_agg_pct": {
+            "mean": 30.2,
+            "p5": 19.2,
+            "p25": 25.8,
+            "p50": 30.0,
+            "p75": 34.4,
+            "p95": 42.0
+          },
+          "reduction_pp": {
+            "mean": 40.0,
+            "p5": 30.7,
+            "p25": 36.6,
+            "p50": 40.1,
+            "p75": 43.5,
+            "p95": 48.9
+          },
+          "prob_reduction_ge_30pp": 96.1,
+          "prob_residual_le_35pct": 77.7
+        }
+      },
+      "tornado_on_aggregate_residual": {
+        "residual_at_all_modes_pct": 25.5,
+        "params": [
+          {
+            "param": "R2 baseline",
+            "resid_at_low": 22.1,
+            "resid_at_high": 31.1,
+            "swing_pp": 9.0
+          },
+          {
+            "param": "R3 baseline",
+            "resid_at_low": 22.6,
+            "resid_at_high": 30.2,
+            "swing_pp": 7.6
+          },
+          {
+            "param": "R1 effectiveness",
+            "resid_at_low": 30.2,
+            "resid_at_high": 22.6,
+            "swing_pp": 7.6
+          },
+          {
+            "param": "R5 baseline",
+            "resid_at_low": 23.1,
+            "resid_at_high": 29.5,
+            "swing_pp": 6.4
+          },
+          {
+            "param": "R3 effectiveness",
+            "resid_at_low": 29.5,
+            "resid_at_high": 23.1,
+            "swing_pp": 6.3
+          },
+          {
+            "param": "R1 baseline",
+            "resid_at_low": 23.1,
+            "resid_at_high": 29.5,
+            "swing_pp": 6.3
+          },
+          {
+            "param": "R4 baseline",
+            "resid_at_low": 23.6,
+            "resid_at_high": 29.6,
+            "swing_pp": 6.1
+          },
+          {
+            "param": "R2 effectiveness",
+            "resid_at_low": 28.7,
+            "resid_at_high": 23.1,
+            "swing_pp": 5.6
+          },
+          {
+            "param": "R4 effectiveness",
+            "resid_at_low": 27.8,
+            "resid_at_high": 23.7,
+            "swing_pp": 4.1
+          },
+          {
+            "param": "R5 effectiveness",
+            "resid_at_low": 26.8,
+            "resid_at_high": 24.3,
+            "swing_pp": 2.5
+          }
+        ]
+      },
+      "eal_rosi": {
+        "per_risk": [
+          {
+            "risk_id": "R3",
+            "loss_per_event_usd": 4250000,
+            "eal_baseline_usd": 850000,
+            "eal_residual_usd": 255000,
+            "eal_avoided_usd": 595000,
+            "year1_cost_usd": 62500,
+            "rosi_pct": 852,
+            "payback_ratio": 9.5
+          },
+          {
+            "risk_id": "R1",
+            "loss_per_event_usd": 1550000,
+            "eal_baseline_usd": 465000,
+            "eal_residual_usd": 93000,
+            "eal_avoided_usd": 372000,
+            "year1_cost_usd": 85000,
+            "rosi_pct": 338,
+            "payback_ratio": 4.4
+          },
+          {
+            "risk_id": "R2",
+            "loss_per_event_usd": 3300000,
+            "eal_baseline_usd": 660000,
+            "eal_residual_usd": 231000,
+            "eal_avoided_usd": 429000,
+            "year1_cost_usd": 114000,
+            "rosi_pct": 276,
+            "payback_ratio": 3.8
+          },
+          {
+            "risk_id": "R4",
+            "loss_per_event_usd": 1550000,
+            "eal_baseline_usd": 232500,
+            "eal_residual_usd": 81375,
+            "eal_avoided_usd": 151125,
+            "year1_cost_usd": 53000,
+            "rosi_pct": 185,
+            "payback_ratio": 2.9
+          },
+          {
+            "risk_id": "R5",
+            "loss_per_event_usd": 1550000,
+            "eal_baseline_usd": 155000,
+            "eal_residual_usd": 66650,
+            "eal_avoided_usd": 88350,
+            "year1_cost_usd": 47000,
+            "rosi_pct": 88,
+            "payback_ratio": 1.9
+          }
+        ],
+        "portfolio": {
+          "eal_baseline_usd": 2362500,
+          "eal_residual_usd": 727025,
+          "eal_avoided_usd": 1635475,
+          "year1_cost_usd": 361500,
+          "rosi_pct": 352
+        }
+      }
+    },
+    "v1.1_research_calibrated": {
+      "parameter_notes": {
+        "R1": "baseline+effectiveness confirmed (Proofpoint ATO 62%/yr; Google security-key study, MSFT)",
+        "R2": "baseline mode 20->13 (DBIR 2026: exploitation surge is edge/VPN-driven, not custom SaaS apps); effectiveness trimmed 45/65/80 -> 40/60/75 (stock CRS ~60% precision; WAF bypass literature)",
+        "R3": "baseline mode 20->11, low 8->5 (GitGuardian 2026: exposure is near-certain but full chain to subscription compromise prices lower); effectiveness confirmed (OIDC eliminates the credential class)",
+        "R4": "baseline confirmed (DBIR 2026 ransomware 48%, 96% of victims SMBs; Coalition claims ~1.5%/yr as floor); effectiveness high capped 80->75 (Picus 2025: only 14% of attacks generate alerts \u2014 a 3-person team won't fully operate EDR)",
+        "R5": "baseline mode 10->6, high 22->18 (survey data is lifetime-rate; DBIR privilege-misuse share is single-digit \u2014 overrides the internal red team's raise to 10); effectiveness high capped 72->70, labeled expert judgment (no efficacy literature exists)"
+      },
+      "deterministic": {
+        "per_risk": [
+          {
+            "risk_id": "R1",
+            "baseline_pct": {
+              "low": 15,
+              "mode": 30,
+              "high": 55
+            },
+            "effectiveness_pct": {
+              "low": 60,
+              "mode": 80,
+              "high": 92
+            },
+            "residual_pct": {
+              "low": 1.2,
+              "mode": 6.0,
+              "high": 22.0
+            }
+          },
+          {
+            "risk_id": "R2",
+            "baseline_pct": {
+              "low": 8,
+              "mode": 13,
+              "high": 38
+            },
+            "effectiveness_pct": {
+              "low": 40,
+              "mode": 60,
+              "high": 75
+            },
+            "residual_pct": {
+              "low": 2.0,
+              "mode": 5.2,
+              "high": 22.8
+            }
+          },
+          {
+            "risk_id": "R3",
+            "baseline_pct": {
+              "low": 5,
+              "mode": 11,
+              "high": 35
+            },
+            "effectiveness_pct": {
+              "low": 45,
+              "mode": 70,
+              "high": 85
+            },
+            "residual_pct": {
+              "low": 0.75,
+              "mode": 3.3,
+              "high": 19.25
+            }
+          },
+          {
+            "risk_id": "R4",
+            "baseline_pct": {
+              "low": 8,
+              "mode": 15,
+              "high": 30
+            },
+            "effectiveness_pct": {
+              "low": 45,
+              "mode": 65,
+              "high": 75
+            },
+            "residual_pct": {
+              "low": 2.0,
+              "mode": 5.25,
+              "high": 16.5
+            }
+          },
+          {
+            "risk_id": "R5",
+            "baseline_pct": {
+              "low": 3,
+              "mode": 6,
+              "high": 18
+            },
+            "effectiveness_pct": {
+              "low": 40,
+              "mode": 57,
+              "high": 70
+            },
+            "residual_pct": {
+              "low": 0.9,
+              "mode": 2.58,
+              "high": 10.8
+            }
+          }
+        ],
+        "aggregate": {
+          "baseline_mode_pct": 56.7,
+          "residual_mode_pct": 20.5,
+          "absolute_reduction_pp": 36.2,
+          "relative_reduction_pct": 63.9,
+          "bounds": {
+            "baseline": {
+              "low_pct": 33.7,
+              "high_pct": 89.6
+            },
+            "residual": {
+              "low_pct": 6.7,
+              "high_pct": 63.8
+            }
+          }
+        },
+        "marginal_contribution": [
+          {
+            "risk_id": "R1",
+            "delta_pp_vs_baseline": 14.8
+          },
+          {
+            "risk_id": "R2",
+            "delta_pp_vs_baseline": 3.9
+          },
+          {
+            "risk_id": "R3",
+            "delta_pp_vs_baseline": 3.7
+          },
+          {
+            "risk_id": "R4",
+            "delta_pp_vs_baseline": 5.0
+          },
+          {
+            "risk_id": "R5",
+            "delta_pp_vs_baseline": 1.6
+          }
+        ]
+      },
+      "monte_carlo": {
+        "independent": {
+          "baseline_agg_pct": {
+            "mean": 66.7,
+            "p5": 56.5,
+            "p25": 62.6,
+            "p50": 66.9,
+            "p75": 71.0,
+            "p95": 76.3
+          },
+          "residual_agg_pct": {
+            "mean": 28.3,
+            "p5": 21.5,
+            "p25": 25.3,
+            "p50": 28.2,
+            "p75": 31.3,
+            "p95": 35.8
+          },
+          "reduction_pp": {
+            "mean": 38.3,
+            "p5": 32.0,
+            "p25": 35.6,
+            "p50": 38.2,
+            "p75": 41.0,
+            "p95": 45.1
+          },
+          "prob_reduction_ge_30pp": 98.7,
+          "prob_residual_le_35pct": 93.0
+        },
+        "correlated": {
+          "baseline_agg_pct": {
+            "mean": 66.0,
+            "p5": 49.7,
+            "p25": 60.7,
+            "p50": 66.5,
+            "p75": 71.9,
+            "p95": 80.5
+          },
+          "residual_agg_pct": {
+            "mean": 28.2,
+            "p5": 17.7,
+            "p25": 23.7,
+            "p50": 27.8,
+            "p75": 32.2,
+            "p95": 39.9
+          },
+          "reduction_pp": {
+            "mean": 37.9,
+            "p5": 28.7,
+            "p25": 34.3,
+            "p50": 37.9,
+            "p75": 41.5,
+            "p95": 46.7
+          },
+          "prob_reduction_ge_30pp": 92.2,
+          "prob_residual_le_35pct": 85.5
+        }
+      },
+      "tornado_on_aggregate_residual": {
+        "residual_at_all_modes_pct": 20.5,
+        "params": [
+          {
+            "param": "R2 baseline",
+            "resid_at_low": 18.8,
+            "resid_at_high": 28.8,
+            "swing_pp": 10.1
+          },
+          {
+            "param": "R1 effectiveness",
+            "resid_at_low": 25.5,
+            "resid_at_high": 17.4,
+            "swing_pp": 8.1
+          },
+          {
+            "param": "R3 baseline",
+            "resid_at_low": 19.0,
+            "resid_at_high": 26.4,
+            "swing_pp": 7.4
+          },
+          {
+            "param": "R1 baseline",
+            "resid_at_low": 17.9,
+            "resid_at_high": 24.7,
+            "swing_pp": 6.8
+          },
+          {
+            "param": "R4 baseline",
+            "resid_at_low": 18.4,
+            "resid_at_high": 24.9,
+            "swing_pp": 6.5
+          },
+          {
+            "param": "R5 baseline",
+            "resid_at_low": 19.4,
+            "resid_at_high": 24.7,
+            "swing_pp": 5.3
+          },
+          {
+            "param": "R2 effectiveness",
+            "resid_at_low": 22.6,
+            "resid_at_high": 18.8,
+            "swing_pp": 3.8
+          },
+          {
+            "param": "R4 effectiveness",
+            "resid_at_low": 23.0,
+            "resid_at_high": 19.2,
+            "swing_pp": 3.8
+          },
+          {
+            "param": "R3 effectiveness",
+            "resid_at_low": 22.7,
+            "resid_at_high": 19.1,
+            "swing_pp": 3.6
+          },
+          {
+            "param": "R5 effectiveness",
+            "resid_at_low": 21.3,
+            "resid_at_high": 19.8,
+            "swing_pp": 1.5
+          }
+        ]
+      },
+      "eal_rosi": {
+        "per_risk": [
+          {
+            "risk_id": "R3",
+            "loss_per_event_usd": 4250000,
+            "eal_baseline_usd": 467500,
+            "eal_residual_usd": 140250,
+            "eal_avoided_usd": 327250,
+            "year1_cost_usd": 62500,
+            "rosi_pct": 424,
+            "payback_ratio": 5.2
+          },
+          {
+            "risk_id": "R1",
+            "loss_per_event_usd": 1550000,
+            "eal_baseline_usd": 465000,
+            "eal_residual_usd": 93000,
+            "eal_avoided_usd": 372000,
+            "year1_cost_usd": 85000,
+            "rosi_pct": 338,
+            "payback_ratio": 4.4
+          },
+          {
+            "risk_id": "R4",
+            "loss_per_event_usd": 1550000,
+            "eal_baseline_usd": 232500,
+            "eal_residual_usd": 81375,
+            "eal_avoided_usd": 151125,
+            "year1_cost_usd": 53000,
+            "rosi_pct": 185,
+            "payback_ratio": 2.9
+          },
+          {
+            "risk_id": "R2",
+            "loss_per_event_usd": 3300000,
+            "eal_baseline_usd": 429000,
+            "eal_residual_usd": 171600,
+            "eal_avoided_usd": 257400,
+            "year1_cost_usd": 114000,
+            "rosi_pct": 126,
+            "payback_ratio": 2.3
+          },
+          {
+            "risk_id": "R5",
+            "loss_per_event_usd": 1550000,
+            "eal_baseline_usd": 93000,
+            "eal_residual_usd": 39990,
+            "eal_avoided_usd": 53010,
+            "year1_cost_usd": 47000,
+            "rosi_pct": 13,
+            "payback_ratio": 1.1
+          }
+        ],
+        "portfolio": {
+          "eal_baseline_usd": 1687000,
+          "eal_residual_usd": 526215,
+          "eal_avoided_usd": 1160785,
+          "year1_cost_usd": 361500,
+          "rosi_pct": 221
+        }
+      }
+    }
+  },
+  "framework_sensitivity": {
+    "impact_weight_sweep": [
+      {
+        "primary_weight": 0.5,
+        "ranking": [
+          "R3",
+          "R2",
+          "R1",
+          "R4",
+          "R5"
+        ],
+        "composites": {
+          "R3": 18.0,
+          "R2": 16.0,
+          "R1": 15.75,
+          "R4": 12.25,
+          "R5": 12.25
+        }
+      },
+      {
+        "primary_weight": 0.55,
+        "ranking": [
+          "R3",
+          "R2",
+          "R1",
+          "R4",
+          "R5"
+        ],
+        "composites": {
+          "R3": 17.8,
+          "R2": 15.6,
+          "R1": 15.53,
+          "R4": 12.42,
+          "R5": 12.08
+        }
+      },
+      {
+        "primary_weight": 0.6,
+        "ranking": [
+          "R3",
+          "R1",
+          "R2",
+          "R4",
+          "R5"
+        ],
+        "composites": {
+          "R3": 17.6,
+          "R1": 15.3,
+          "R2": 15.2,
+          "R4": 12.6,
+          "R5": 11.9
+        }
+      },
+      {
+        "primary_weight": 0.65,
+        "ranking": [
+          "R3",
+          "R1",
+          "R2",
+          "R4",
+          "R5"
+        ],
+        "composites": {
+          "R3": 17.4,
+          "R1": 15.08,
+          "R2": 14.8,
+          "R4": 12.78,
+          "R5": 11.72
+        }
+      },
+      {
+        "primary_weight": 0.7,
+        "ranking": [
+          "R3",
+          "R1",
+          "R2",
+          "R4",
+          "R5"
+        ],
+        "composites": {
+          "R3": 17.2,
+          "R1": 14.85,
+          "R2": 14.4,
+          "R4": 12.95,
+          "R5": 11.55
+        }
+      }
+    ],
+    "top_risk_stable_across_sweep": true,
+    "mean_aggregation_ranking": [
+      "R3",
+      "R2",
+      "R1",
+      "R4",
+      "R5"
+    ],
+    "mean_aggregation_composites": {
+      "R1": 14.73,
+      "R2": 15.33,
+      "R3": 16.87,
+      "R4": 13.54,
+      "R5": 11.33
+    },
+    "top_risk_stable_mean_vs_median": true,
+    "near_ties_epsilon": 0.5,
+    "near_ties": [
+      {
+        "pair": [
+          "R1",
+          "R2"
+        ],
+        "gap": 0.1,
+        "flag": "ordering between these two is noise \u2014 treat as tied for decisions"
+      }
+    ]
+  }
+}

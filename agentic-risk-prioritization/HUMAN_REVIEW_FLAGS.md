@@ -4,6 +4,21 @@
 
 Total flags: **23** auto-collected + **9** red-team issues.
 
+## Post-research status (updated 2026-07-06)
+
+A second agentic pass (6 web-research verifiers + an assessor review, findings in [outputs/09_research_validation.json](outputs/09_research_validation.json), adjudication in [SOURCES.md](SOURCES.md)) worked the flags below. Status of the major themes:
+
+| Theme | Status |
+|-------|--------|
+| Quantitative parameters are unverified model memory | **Worked.** Every baseline/effectiveness verified against DBIR 2026, GitGuardian 2026, Sophos 2025, Proofpoint, NetDiligence 2025, Picus 2025; five parameters recalibrated → v1.1 model (56.7% → 20.5%). Remaining: validate against the company's own telemetry; human click-through of the ~30 cited URLs |
+| Prices are model-memory estimates | **Worked.** All 13 SKUs checked against vendor pages 2026-07-06; three corrections (Entra P2 $10, EPM $3.00, "Defender Suite" rename), one confirmation that matters (Secret Protection needs no GitHub Enterprise). Remaining: negotiated quotes |
+| Joint calibration: baselines imply ~65%/yr, high vs SMB base rates | **Worked.** v1.1 lands at 56.7%, inside the red team's suggested ceiling — external research and the internal skeptic converged |
+| R3+R5 contradictory control states; cross-risk double counting | **Partially worked.** v1.1 recalibration reduces the double-counted mass (R3 mode nearly halved); the structural fix (a portfolio-reconciliation stage) is specified in the README's pipeline changelog for the next run |
+| Challenger dissent on the #1 ranking (R3 vs R1) | **Worked analytically.** The framework-sensitivity sweep shows R3 stays #1 across impact weights 0.50–0.70 and under mean-vs-median aggregation ([outputs/08](outputs/08_advanced_analytics.json)); the R1-vs-R2 pair is flagged as a statistical tie. The likelihood-conditioning critique itself still deserves a human read |
+| Notification-duty materiality assumption | **Open.** One conversation with counsel; no research substitute |
+| SOC 2 criteria mappings | **Worked.** Audited against AICPA TSC text; two criteria dropped, two added — see [ROADMAP.md](ROADMAP.md) |
+| Effectiveness assumes one 3-person team implements all five packages | **Open** (structural). Mitigated only by the roadmap's phased waves; track via the KRI review cadence |
+
 ## Standing pipeline flag
 
 - **[ALL]** STANDING FLAG: every numeric parameter (baselines, effectiveness, costs) is an LLM estimate from model memory. Validate against current DBIR/industry reports, actual Azure/M365 pricing, and the company's own telemetry before using in budget or board material.

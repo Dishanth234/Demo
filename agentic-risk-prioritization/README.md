@@ -2,33 +2,38 @@
 
 **Scenario (fixed):** a 200-employee SaaS company on Azure + M365 — public-facing web app, PostgreSQL backend, remote workforce, one small IT team, SOC 2 in progress. Added assumptions are itemized in [ASSUMPTIONS.md](ASSUMPTIONS.md).
 
-**What this is:** a working multi-agent pipeline (not a single prompt) that takes a 5-risk register through validation → 3-lens scoring → adversarial challenge → mitigation + feasibility review → quantitative breach-likelihood modeling → synthesis. Roughly 25 agents per run; every agent returns schema-validated JSON; **all arithmetic is done by deterministic code, never by a model**. The pipeline was actually executed — the outputs in [outputs/](outputs/) are its real artifacts, and [workflow/risk_pipeline.workflow.js](workflow/risk_pipeline.workflow.js) is the exact script that ran.
+**What this is:** a working multi-agent pipeline (not a single prompt) that takes a 5-risk register through validation → 3-lens scoring → adversarial challenge → mitigation + feasibility review → quantitative breach-likelihood modeling → synthesis. **24 agents** in the executed run; every agent returns schema-validated JSON; **all arithmetic is done by deterministic code, never by a model**. The pipeline was actually executed — the outputs in [outputs/](outputs/) are its real artifacts, and [workflow/risk_pipeline.workflow.js](workflow/risk_pipeline.workflow.js) is the exact script that ran. A second 7-agent pass then **web-verified every parameter against current primary sources** and adversarially assessed this deliverable itself ([SOURCES.md](SOURCES.md)).
 
 ```
 repo layout
 ├── README.md                     ← this write-up (results included below)
 ├── ASSUMPTIONS.md                ← every stated assumption, and why it matters
-├── HUMAN_REVIEW_FLAGS.md         ← auto-generated: where NOT to trust the AI
+├── SOURCES.md                    ← research-verified citations + the v1.1 recalibration
+├── HUMAN_REVIEW_FLAGS.md         ← auto-generated: where NOT to trust the AI (+ post-research status)
+├── ROADMAP.md                    ← sequencing waves, KRIs, MITRE ATT&CK + SOC 2 evidence matrix
+├── dashboard.html                ← self-contained results dashboard (artifact fragment; see provenance note inside)
 ├── workflow/
-│   └── risk_pipeline.workflow.js ← the executed orchestration script (the plumbing)
+│   ├── risk_pipeline.workflow.js ← the executed orchestration script (the plumbing, untouched)
+│   ├── replay_harness.mjs        ← node shim: re-runs the script from saved outputs; PASS = byte-identical
+│   └── advanced_analytics.py     ← seeded Monte Carlo, tornado, ROSI, framework sensitivity
 ├── prompts/                      ← exact prompt templates for all 9 agent roles
 ├── schemas/schemas.json          ← JSON Schemas that force structured agent output
-└── outputs/                      ← real artifacts from the executed run
+└── outputs/                      ← real artifacts: 01-07 pipeline run, 08 analytics, 09 research findings
 ```
 
 ---
 
 ## Task 1 — The five risks
 
-Each entry names a **threat source**, the **asset at stake**, and the **exposure** (why this company, specifically). The seed register was authored by hand; a validator agent then tightened wording and checked distinctness without being allowed to change ids or subjects. Final validated register: [outputs/01_risk_register.json](outputs/01_risk_register.json).
+Each entry names a **threat source**, the **asset at stake**, and the **exposure** (why this company, specifically). The seed register was authored by hand; a validator agent then tightened wording and checked distinctness without being allowed to change ids or subjects. The table below **is** the validated register ([outputs/01_risk_register.json](outputs/01_risk_register.json)) — not the seed draft — so it matches the artifact it links to.
 
 | ID | Risk | Threat source | Asset at stake | Exposure |
 |----|------|---------------|----------------|----------|
-| **R1** | AiTM credential phishing → M365/Entra account takeover | External phishing crews running adversary-in-the-middle kits (Evilginx-class) that proxy the real Entra login page and steal session cookies, defeating push MFA | Entra ID identities and everything behind them: Exchange Online, SharePoint/OneDrive, ~15 SSO SaaS apps | 200 remote employees on unmanaged networks; MFA is phishable Authenticator push; no Conditional Access device-compliance or authentication-strength policy |
-| **R2** | Public web app exploitation (SQLi/IDOR/CVE) → PostgreSQL exfiltration | External mass scanners and targeted attackers exploiting OWASP-class flaws or unpatched framework CVEs | Multi-tenant customer records + PII of ~500k end users in Azure PostgreSQL; the tenant-isolation boundary | Internet-facing app, no WAF, single high-privilege app DB role, no security code-review/DAST gate, weeks of patch latency |
-| **R3** | Leaked CI/CD & cloud secrets → Azure subscription compromise | External attackers harvesting secrets from repos, infostealer-hit developer laptops, or compromised GitHub Actions dependencies | The production Azure subscription: App Service, Postgres admin creds, Blob Storage incl. backups; the deploy pipeline | Historical .env/connection strings in repos; long-lived service-principal secrets with Contributor rights; no secret scanning or rotation; ~60 engineers with broad repo access |
-| **R4** | Ransomware/extortion via unmanaged remote endpoints | Ransomware affiliates and initial-access brokers delivering infostealers/loaders via malvertising and trojanized installers | Laptops, cached corporate credentials/tokens, synced OneDrive/SharePoint corpora; operational continuity | ~40% of laptops not in Intune; users are local admins; Defender AV defaults, no EDR monitoring, no SIEM |
-| **R5** | Offboarding gaps: dormant employee/contractor access to production data | Internal: departed staff/contractors retaining valid access; external attackers reusing dormant accounts and shared service-account passwords | Production PostgreSQL (direct contractor accounts), GitHub source, customer data in M365; SOC 2 audit integrity | Manual ticket-driven offboarding across ~15 SaaS apps + Azure + Postgres; shared non-rotated service accounts; no access recertification |
+| **R1** | AiTM credential phishing → M365/Entra account takeover | External financially motivated phishing crews using adversary-in-the-middle kits (Evilginx-class) that proxy the real Entra login page and steal session cookies, defeating Authenticator push MFA | Employee Entra ID identities and everything behind them: Exchange Online mail, SharePoint/OneDrive tenant data, and the ~15 downstream SSO SaaS apps, including any admin roles they carry | 200 remote employees; MFA is phishable push with no Conditional Access device-compliance or authentication-strength policies; a 3-person IT team with no SIEM cannot triage sign-in anomalies at scale |
+| **R2** | Public web app exploitation (SQLi/IDOR/CVE) → PostgreSQL customer-data exfiltration | External opportunistic mass scanners and targeted attackers exploiting OWASP-class flaws (SQLi, IDOR, SSRF) or unpatched framework/library CVEs in the internet-facing multi-tenant app | Business records and PII of ~500k end users across ~1,200 customer orgs in Azure Database for PostgreSQL, plus the app-layer tenant-isolation boundary | Internet-facing App Service with no WAF; no dedicated security engineer to drive secure-SDLC gates or rapid patching; a single application flaw can cross tenant boundaries in the shared database |
+| **R3** | Leaked CI/CD & cloud secrets → Azure production subscription compromise | External attackers harvesting live secrets from repository history, infostealer-compromised developer laptops (GitHub PATs, cached tokens), or malicious/compromised GitHub Actions dependencies | The single production Azure subscription: App Service, PostgreSQL connection credentials, Blob Storage including backups, and the GitHub Actions pipeline that deploys to it | Historical .env files and connection strings committed to private repos; long-lived service-principal secrets with Contributor rights in GitHub Actions; ~60 engineers whose access multiplies leak paths; no dedicated security staff monitoring for secret exposure |
+| **R4** | Ransomware/extortion via unmanaged remote endpoints | Ransomware affiliates and initial-access brokers delivering infostealers and loaders through malvertising, trojanized installers, and commodity phishing aimed at remote workers' laptops | Employee laptops, cached corporate credentials and Entra tokens, locally synced OneDrive/SharePoint data, and continuity of support, billing, and engineering operations | ~40% of laptops not Intune-enrolled; users commonly local admins; Defender AV on defaults with no EDR and no SIEM, so nobody is watching alerts; remote-first workforce mixes personal use with work devices |
+| **R5** | Offboarding gaps: dormant employee/contractor access to production data | Departed or departing employees and contractors retaining valid credentials (malicious or negligent), and external attackers credential-stuffing dormant accounts that no one is watching | Production PostgreSQL (direct contractor database accounts), GitHub source code, and customer data reachable via lingering M365/Entra and downstream SaaS access; credibility of the in-progress SOC 2 program | Offboarding is manual and ticket-driven across Entra, ~15 SSO apps, Azure, GitHub, and direct Postgres accounts; contractors hold standing database logins outside SSO, so a missed ticket leaves working production access indefinitely |
 
 The five have deliberately distinct threat sources (external-phishing, external-appsec, external-secrets, external-malware, internal) and distinct primary assets, so mitigations don't collapse into one another.
 
@@ -77,7 +82,9 @@ flowchart TD
 
 ### The run
 
-24 agents, ~706k tokens, ~12 minutes wall clock. The validator tightened all five entries and — usefully — **stripped four "facts" my drafts had invented** that weren't in the scenario (e.g. "no secret scanning", "shared service accounts"), moving them to `validation_notes` as things to confirm in fieldwork. It also flagged 3 coverage gaps for the watchlist (backup immutability/restore testing, third-party SaaS vendor breach, *current*-insider overexposure).
+24 agents, ~706k tokens, ~12 minutes wall clock. The validator tightened all five entries and — usefully — **stripped seven asserted "facts" across three entries** that my drafts had invented beyond the scenario (e.g. "no secret scanning", "shared service accounts", "single high-privilege DB role"), moving them to `validation_notes` as things to confirm in fieldwork (they're also listed in [ASSUMPTIONS.md](ASSUMPTIONS.md) so the documents agree). It also flagged 3 coverage gaps for the watchlist (backup immutability/restore testing, third-party SaaS vendor breach, *current*-insider overexposure).
+
+**Reproducibility:** [workflow/replay_harness.mjs](workflow/replay_harness.mjs) re-executes the exact pipeline script with `agent()` mocked to return the saved outputs — all deterministic code paths run for real. Result: `PASS — replayed ranking, scoring table, model, final estimates and top-risk verdict are byte-identical to the shipped outputs/` (`node workflow/replay_harness.mjs` to verify yourself).
 
 **Priority ranking** (composite = L × I, median of 3 lenses; full factor-level audit trail with every scorer's reasoning in [outputs/02_prioritization_scores.json](outputs/02_prioritization_scores.json)):
 
@@ -94,6 +101,8 @@ No factor had a scorer spread ≥ 2, so no scoring-disagreement flags fired — 
 **The single highest risk: R3.** Why, in one paragraph from the audit trail: it is the only risk where all three lenses scored *both* impact factors at or near the maximum — a Contributor-level service principal in a **single** production subscription reaches the database, the backups, and the deploy pipeline at once (no recovery path), while likelihood is held up by commodity infostealers hitting an unmanaged, local-admin developer fleet whose repos contain historical connection strings.
 
 **Adversarial challenge:** split verdict, so the #1 stands but carries a flag. The *likelihood* challenger **refuted** (medium confidence, alternative: R1), arguing a genuine methodological catch — two scorers' TEF counted raw delivery attempts while their VULN also counted chain-success, double-counting the chain, and one TEF contributor (public-repo scanning) can't apply to private repos. The *impact* challenger **upheld** (high confidence): R3 *is* the existential scenario — multi-tenant breach, backup destruction and subscription persistence are all inside it. Both arguments, with cited evidence, are in [outputs/03_top_risk_and_challenge.json](outputs/03_top_risk_and_challenge.json). A human adjudicating the dissent should note R1 vs R3 are within 2.3 composite points and R1's mitigation turns out to have the *largest marginal effect on breach likelihood* (below) — the correct executive read is "R3 and R1 are the top tier; fund both."
+
+**How robust is the ranking itself?** Two policy choices in the framework (the 60/40 impact weight, median-vs-mean lens aggregation) were stress-tested in code ([outputs/08_advanced_analytics.json](outputs/08_advanced_analytics.json) → `framework_sensitivity`): **R3 stays #1 across the entire primary-weight sweep 0.50–0.70 and under mean aggregation** — the answer to "the single highest risk" does not depend on the knobs. What *does* move is the R1/R2 pair: they swap at weights ≤ 0.55 and sit 0.1 composite points apart, so the pipeline now flags them as a **statistical tie** — an honest ranking says when its own ordering is noise.
 
 ---
 
@@ -156,13 +165,35 @@ Five estimator agents (blind to each other) produced baseline and effectiveness 
 
 Note the deliberate tension the pipeline surfaced: R3 is the top-*ranked* risk (impact-driven), but R1 is the biggest single *likelihood* lever. Priorities aren't the same question as sequencing — the model makes that explicit instead of hiding it in one number.
 
-**Caveats the pipeline itself raised** (not added by me afterwards): the independence assumption **overstates the baseline aggregate** — the red team identified one infostealer infection on the unmanaged fleet as a shared driver of R3 *and* R4, and phishable MFA as a shared driver of R1, R3 and R5, so the true baseline is somewhat below 65.7% and correlated *mitigation under-delivery* (one overloaded 3-person team implementing all five packages) makes the residual optimistic. It also flagged that all five baselines lean on the same unstated assumption that PII access near-automatically triggers notification duty. Directionally the reduction is robust; the point estimates are not.
+**Caveats the pipeline itself raised** (not added by me afterwards): the independence assumption **overstates the baseline aggregate** — the red team identified one infostealer infection on the unmanaged fleet as a shared driver of R3 *and* R4, and phishable MFA as a shared driver of R1, R3 and R5, so the true baseline is somewhat below 65.7% and correlated *mitigation under-delivery* (one overloaded 3-person team implementing all five packages) makes the residual optimistic. It also flagged that all five baselines lean on the same unstated assumption that PII access near-automatically triggers notification duty. Directionally the reduction is robust; the point estimates are not — which is why the parameters were then research-verified (next section).
+
+### Research validation → the v1.1 calibrated model
+
+The flags demanded human verification of every parameter, so a second agentic pass (6 web-research verifiers, raw findings in [outputs/09_research_validation.json](outputs/09_research_validation.json)) checked each baseline, effectiveness value, impact band and price against **current primary sources** — Verizon DBIR 2026, GitGuardian State of Secrets Sprawl 2026, Sophos State of Ransomware 2025, Proofpoint ATO data, NetDiligence 2025 claims, Picus Blue Report 2025, Microsoft/GitHub pricing pages (fetched 2026-07-06). Verdicts and the row-by-row recalibration are in [SOURCES.md](SOURCES.md); highlights:
+
+- **Confirmed:** R1's baseline (Proofpoint: 62% of orgs had a successful ATO; 65% of compromised accounts had MFA on) and its 80% effectiveness (Google's 350k-attempt security-key study); R4's baseline (DBIR 2026: ransomware in 48% of breaches, 96% of victims SMBs); the impact bands (NetDiligence: BI-involved SME ransomware averages $2.1M).
+- **Recalibrated down:** R2 and R3 baselines (the DBIR exploitation surge is edge/VPN-driven, not custom SaaS apps; secret *exposure* ≈ certain but the full chain prices lower) and R5 (survey rates are lifetime, not annual — external data overrode the internal red team's raise, and both moves are preserved in the audit trail). R2's effectiveness trimmed (stock WAF managed rules ≈ 60% precision), R4's and R5's high-modes capped.
+
+| | v1.0 (pipeline) | **v1.1 (research-calibrated)** |
+|--|-----------------|-------------------------------|
+| Aggregate baseline (mode) | 65.7% | **56.7%** |
+| Aggregate residual (mode) | 25.5% | **20.5%** |
+| Reduction | −40.2 pp (−61.2%) | **−36.2 pp (−63.9%)** |
+| Biggest marginal lever | R1 −11.7 pp | **R1 −14.8 pp** |
+
+The v1.1 baseline lands inside the ceiling the internal red team argued for — the external evidence and the internal skeptic **converged independently**, which is the strongest calibration signal this exercise produced. Both models ship side by side in [outputs/08_advanced_analytics.json](outputs/08_advanced_analytics.json); v1.0 remains untouched as the as-run artifact.
+
+### Uncertainty, sensitivity, and money ([workflow/advanced_analytics.py](workflow/advanced_analytics.py) — seeded, deterministic, no LLM)
+
+- **Monte Carlo (100k iterations, triangular distributions).** v1.1: reduction is **38.2 pp median (P5–P95: 32.0–45.1)**; P(residual ≤ 35%) = 93%. A *correlated* variant (shared threat-environment and execution-capacity shocks, pairwise rank corr ≈ 0.4 — implementing the red team's concern) widens the residual band to **17.7–39.9%** without changing the median: the reduction survives correlation, the precision doesn't.
+- **Tornado (one-way sensitivity).** The aggregate residual is most sensitive to **R2's baseline** (±10.1 pp swing in v1.1), then R1's effectiveness — so the two cheapest ways to improve this model are a real external attack-surface scan (pins R2) and passkey-rollout coverage telemetry (pins R1). That is where a human should spend verification effort first.
+- **Expected annual loss / ROSI** (impact-band midpoints × probabilities vs. year-1 cost incl. labor at $3k/person-week): v1.1 portfolio EAL falls from **$1.69M to $0.53M** for ~$362k of year-1 spend — **portfolio ROSI = 221%**, positive for every mitigation (R3 best at 424%, R5 weakest at 13% — R5 is justified by SOC 2 evidence value and tail risk, not ROI, and the model says so honestly).
 
 ---
 
 ## Where the AI must not be trusted without human review
 
-Auto-generated from agent flags during the run — see [HUMAN_REVIEW_FLAGS.md](HUMAN_REVIEW_FLAGS.md) for the full list. The standing rule: **every numeric parameter in this repo (baselines, effectiveness, costs) is an LLM estimate from model memory.** It must be validated against current industry reports (DBIR, IBM CoDB), real Azure/M365 pricing, and the company's own telemetry before appearing in budgets or board material.
+Auto-generated from agent flags during the run — see [HUMAN_REVIEW_FLAGS.md](HUMAN_REVIEW_FLAGS.md) for the full list **and its post-research status table**: the research pass worked most flags (parameters verified/recalibrated, prices confirmed against vendor pages, SOC 2 mappings audited), while two remain genuinely open — the notification-duty materiality assumption (needs counsel, not research) and the structural risk that one 3-person team under-delivers all five packages at once. The standing rule survives in weakened form: **v1.1's numbers are research-anchored but AI-gathered — a human should click through the ~30 cited sources, and company telemetry validation is still outstanding.**
 
 The run produced **23 auto-collected flags + 9 red-team issues**, grouped by source:
 
@@ -176,15 +207,28 @@ The run produced **23 auto-collected flags + 9 red-team issues**, grouped by sou
 
 ## Beyond the brief — features that make this operationally useful
 
-- **Re-runnable by design.** The workflow accepts an updated register via `args.risks` — re-run it quarterly (or after a control lands) and diff the outputs. Prompts, schemas and code are versioned in this repo, so two runs are comparable.
-- **SOC 2 dual-use.** Every mitigation is mapped to SOC 2 Trust Services Criteria (CC-series) by the architect agents — the company is mid-audit, so risk spend doubles as audit evidence.
-- **Marginal-contribution analysis.** The model computes what each mitigation buys *alone* (`delta_pp_vs_baseline`), which is what actually drives sequencing decisions under a 3-person IT team — not raw risk scores.
-- **Coverage-gap watchlist.** The validator agent lists material risks *not* in the top 5, so the register can't silently ossify.
-- **Human-review flags as a first-class artifact.** Disagreement between scorers, challenger dissent, feasibility pushback and red-team correlation concerns all land in one machine-generated file instead of being buried in transcripts.
-- **Everything is a file.** Registers, scores, mitigations and model parameters are JSON — trivially importable into a GRC tool, a dashboard, or the next run.
+- **Research-verified parameters (v1.1).** A second agentic pass fact-checked every number against DBIR 2026, GitGuardian 2026, Sophos 2025, NetDiligence 2025 and live vendor pricing pages, producing a cited source register ([SOURCES.md](SOURCES.md)) and a recalibrated model — the worked example of exactly the human review the flags demanded.
+- **Reproducibility harness.** `node workflow/replay_harness.mjs` re-runs the real orchestration script against the saved agent outputs and byte-diffs the results — the "plumbing" is provable, not just readable.
+- **Uncertainty, sensitivity, and money.** Seeded Monte Carlo (independent *and* correlated), tornado analysis telling a human where verification effort pays off most, and per-mitigation ROSI for the budget conversation ([outputs/08](outputs/08_advanced_analytics.json)).
+- **Implementation roadmap with KRIs.** Three waves consolidated from the feasibility reviews, a 30/60/90 cut, and per-risk key-risk-indicators with named Azure/M365 data sources and targets — how the company *knows* risk is falling ([ROADMAP.md](ROADMAP.md)).
+- **Framework mappings, audited.** MITRE ATT&CK v19.1 kill chains per risk (all 22 technique IDs verified against live pages) and a SOC 2 evidence matrix checked against the AICPA TSC text — two miss-mapped criteria dropped, two gaps added ([ROADMAP.md](ROADMAP.md)).
+- **SOC 2 dual-use.** Every mitigation is mapped to Trust Services Criteria — the company is mid-audit, so risk spend doubles as audit evidence.
+- **Marginal-contribution analysis.** The model computes what each mitigation buys *alone* (`delta_pp_vs_baseline`), which is what actually drives sequencing under a 3-person IT team — not raw risk scores.
+- **Re-runnable by design.** The workflow accepts an updated register via `args.risks` — re-run quarterly or after a control lands, and diff the outputs.
+- **Coverage-gap watchlist** (risks *not* in the top 5) and **human-review flags as a first-class artifact**, both machine-generated from the run.
+- **Everything is a file.** Registers, scores, mitigations, model parameters, research findings — all JSON, trivially importable into a GRC tool or the next run.
+
+## Pipeline changelog — upgrades specified for the next run
+
+The as-executed script is kept untouched as the audit artifact; these v1.1 pipeline changes are specified for the next quarterly run, each fixing something this run surfaced:
+
+1. **Portfolio-reconciliation stage** after the red team: fix one canonical control timeline (e.g., "Postgres Entra-auth lands in month X") and a double-counting rule, then re-trigger targeted revisions — closes the gap where multi-risk issues (`R3+R5`, `ALL`) currently map to no reviser.
+2. **Near-tie flag in the ranking code** (adjacent composites < 0.5 apart → "treat as tied"), promoted from post-hoc analytics into the pipeline output.
+3. **TEF/VULN conditioning guard** in the scorer prompt (score TEF on *delivery attempts only*, VULN on *attempt→success only*) — the exact double-count the likelihood challenger caught.
+4. **Research-verifier stage as a standing phase** (the 6 web agents from this upgrade), so parameters arrive cited instead of being flagged for later.
 
 ## Reproducing / porting
 
-The orchestration runs on the Claude Agent SDK's workflow harness (`agent()` spawns a subagent, `schema:` forces validated JSON, `parallel()`/`pipeline()` control concurrency). The design ports 1:1 to LangGraph (nodes = agents, edges = the phase graph, code nodes = the deterministic aggregation/model steps) or CrewAI; the prompts and schemas in this repo are stack-agnostic.
+The orchestration runs on the Claude Agent SDK's workflow harness (`agent()` spawns a subagent, `schema:` forces validated JSON, `parallel()`/`pipeline()` control concurrency). `workflow/replay_harness.mjs` shows the full harness contract in ~40 lines of shims — implementing those five functions on LangGraph (nodes = agents, edges = the phase graph, code nodes = the deterministic steps) or CrewAI ports the design 1:1; the prompts and schemas are stack-agnostic. The analytics need only Python 3 stdlib; the replay harness needs Node ≥ 18.
 
-**Time spent:** within the 3–4h box — ~1h risk register + framework and scale design, ~1.5h pipeline authoring and debugging, ~1h run + write-up.
+**Time spent:** the core assessment (register + framework design ~1h, pipeline authoring and debugging ~1.5h, run + write-up ~1h) fits the 3–4h box. The upgrade layer — research verification, v1.1 recalibration, Monte Carlo/ROSI analytics, roadmap/KRIs, replay harness, dashboard — was built **after and outside that box** (~2h of additional orchestration) and is labeled as such rather than squeezed into the claim.
