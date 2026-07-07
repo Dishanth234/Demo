@@ -1,0 +1,271 @@
+[
+  {
+    "area": "model",
+    "data": {
+      "area": "Model correctness \u2014 in-browser risk math (triMean, aggregate, triInv, compute, monteCarlo, derive/rerank, applySignal, EAL/appetite MC) and state/MODEL sync across add/edit/delete/reset/import",
+      "defects": [
+        {
+          "what": "Editing a risk's 'Baseline breach %' (or effectiveness) in the Risks form has NO effect on the entire probability model, even though the toast says 'model recomputed'. syncState() (line 929) preserves the existing state[id] whenever one already exists (p?{...p}:seed), and compute()/monteCarlo()/marg all read breach params from state[], NOT from r.b[]. The form's Save writes the new mode only into nr.b[1] (line 1052), which nothing in the probability model reads. So aggregate breach %, EAL, ROSI, marginal chart, and Monte Carlo are all unchanged after an edit; only composite/impact/likelihood/tier/loss (derived from r.sc) move.",
+          "where": "riskForm save at line 1047-1058 (b recomputed at 1052) interacting with syncState() line 929 and compute() line 935 / monteCarlo() line 949",
+          "repro": "Reset to the 5. Go to Risks, Edit R1, change 'Baseline breach % (mode)' from 30 to 70, Save. Toast: 'Updated R1 \u2014 model recomputed'. Open Live model: R1 baseline slider still reads 30%, 'now' breach prob and EAL unchanged. Only after clicking Model\u2192'Reset params' (line 1272, the one path that rebuilds state from r.b) does 70 finally appear \u2014 wiping all other slider tweaks.",
+          "severity": "major",
+          "fix": "On edit, force-resync the edited risk's state from the new b/e, e.g. in the save handler delete state[nr.id] before syncState(), or have syncState refresh bMode/bLow/bHigh/eMode/eLow/eHigh from r.b/r.e for existing entries. Alternatively drive the Model sliders from r.b so there is one source of truth."
+        },
+        {
+          "what": "The tool's headline 'Expected annual loss' is systematically ~33% below the mean of its own Monte Carlo loss distribution. compute() uses ealBase = bMean/100 * r.loss (severity multiplier = 1.0), but monteCarlo() draws per-event severity sev = r.loss * triInv(rng(),0.5,1,2.5) whose triangular mean is (0.5+1+2.5)/3 = 1.333. Same Bernoulli firing logic otherwise, so E[MC annual loss] = 1.333 * ealBase. The EAL KPI, the LEC curve, the histogram, and the appetite P(loss>threshold) are shown side by side but built on inconsistent severity means.",
+          "where": "compute() ealBase/ealResid at line 938 vs monteCarlo() sev at line 953",
+          "repro": "Reset to the 5. Note the 'Expected annual loss' readout (analytic, multiplier 1.0). Run 20k Monte Carlo; the simulated loss distribution's mean sits ~33% higher because every simulated event's loss is scaled by a triangular with mean 1.333, not 1.0. The 'expected annual loss' number does not equal the expectation of the distribution the same page plots.",
+          "severity": "major",
+          "fix": "Make the two consistent: either multiply the analytic ealBase/ealResid by the severity-multiplier mean (1.333) so EAL matches the MC expectation, or center the MC severity triangular on 1.0 (e.g. mode chosen so its mean is 1.0) if the analytic point-loss is the intended 'expected' value."
+        },
+        {
+          "what": "applySignal() clamps only the upper bound of ordinal factors and baseline. r.sc[f]=Math.min(5, r.sc[f]+delta) and bMode=Math.min(80, ...) have no lower clamp, and the manual-ingest path (line 1189) accepts arbitrary effect JSON including negative deltas. A negative-delta signal drives sc.tef/vuln negative (breaking composite/impact and BAND-independent math) or bMode negative, which then makes aggregate() compute 1 - (neg)/100 > 1, flipping the product sign and producing breach probabilities outside [0,100].",
+          "where": "applySignal lines 1180-1183; manual ingest line 1189",
+          "repro": "On Integrations, paste into the ingest box: {\"source\":\"x\",\"title\":\"y\",\"riskId\":\"R1\",\"effect\":{\"field\":\"baseline\",\"delta\":-50}} and Apply. state.R1.bMode = min(80, 30-50) = -20; the aggregate now uses 1-(-20)/100 = 1.2, and the 'now'/'after' breach % and marginal bars go non-physical. A {\"field\":\"vuln\",\"delta\":-9} pushes sc.vuln to -6, making likelihood/composite negative.",
+          "severity": "minor",
+          "fix": "Clamp both ends: r.sc[f]=Math.max(1,Math.min(5,...)); bMode=Math.max(0,Math.min(80,...)); and validate ingested effect.delta / field before pushing to the feed."
+        },
+        {
+          "what": "Import JSON applies no bounds to b[]/e[] (line 1278 passes r.b||[8,15,30] straight through), and imported risks reuse ids so state can desync just like edits. Out-of-range baselines flow into state via syncState and break aggregate()/charts; an imported id that collides with an existing state key keeps the OLD slider values (same syncState preserve-existing behavior as the edit bug).",
+          "where": "import handler line 1278 + syncState line 929",
+          "repro": "Import [{\"id\":\"R1\",\"title\":\"t\",\"b\":[0,150,200],\"e\":[0,0,0]}]. state.R1.bMode becomes 150 (if R1 state didn't pre-exist) \u2192 aggregate uses 1-1.5 = -0.5 and the bars chart draws off-canvas; or if R1 state pre-exists, the imported b is silently ignored on the Model tab.",
+          "severity": "minor",
+          "fix": "Clamp imported b to [0,80] and e to [0,95] (and enforce lo<=mode<=hi) in the import map, and reset state for imported ids (delete state[id] before syncState) so imported baselines actually take effect."
+        },
+        {
+          "what": "The LEC (loss-exceedance) chart y-axis is hardcoded to a 0-70% range (y=p=>m.t+(1-p/70)*...), but exceedance probabilities for low thresholds routinely exceed 70% with the seeded 5 risks. The 'now' curve's leftmost point (P(annual loss > $100k)) can exceed 70%, plotting above the top edge / off the chart with no clamp.",
+          "where": "lecChart y() at line 1112",
+          "repro": "Reset to the 5, Run Monte Carlo. Aggregate baseline breach prob is ~0.7 and every fired event's loss (>=0.5*loss, min loss 1.55M) far exceeds $100k, so P(baseLoss>100k)\u224870%+; the 'now' line's first data point renders at or above the plot's top border rather than inside the gridlines.",
+          "severity": "cosmetic",
+          "fix": "Compute the y-axis max from the data (Math.max of all plotted exceedance values, or clamp to 100%) instead of the fixed /70 divisor, or clamp y() output to the plot band."
+        },
+        {
+          "what": "Every slider input runs a fresh 6,000-iteration Monte Carlo synchronously. box.oninput sets lastMC=null then calls liveUpdate\u2192renderReadout, which (line 976) falls to monteCarlo(6000) whenever lastMC is null. That is ~6000*5risks*4 triInv = ~120k triInv evaluations per slider tick just to fill the appetite readout.",
+          "where": "box.oninput line 1100 \u2192 renderReadout line 976",
+          "repro": "Drag any baseline/effectiveness slider in Live model; each pixel of movement triggers a 6k-year Monte Carlo. On lower-end hardware the slider feels laggy; it is pure recompute waste since the headline appetite number could reuse the last full run or a cheaper analytic estimate.",
+          "severity": "minor",
+          "fix": "Debounce the appetite MC, or compute the appetite exceedance analytically for the live readout and reserve the full MC for the explicit Run button (which already sets lastMC=20k)."
+        }
+      ],
+      "ok": [
+        "derive()/rerank() composite formula is correct and matches the stored DATA: L=(tef+vuln)/2, I=0.6*primary+0.4*secondary, composite=L*I (e.g. R3: 4 * (0.6*4+0.4*5=4.4) = 17.6, matches DATA.composite=17.6). Tier thresholds (>=16/10/5) are self-consistent with the stored tiers.",
+        "loss() uses BAND[primary]+BAND[secondary] with band representative values {1:12500,2:62500,3:300000,4:1250000,5:3000000} that match the $-band midpoints in the rationale ($100-500k\u2192300k, $500k-2M\u21921.25M); R3 loss=1.25M+3M=4.25M matches DATA.loss=4250000. Consistent across risks.",
+        "triInv() is a correct triangular inverse-CDF: guard if(b<=a) return a prevents div-by-zero, split at fc=(c-a)/(b-a) is right, and both branches simplify correctly at c==a and c==b. No NaN for degenerate modes.",
+        "compute() guards ordering with bLo=min(bLow,bMode)/bHi=max(bHigh,bMode) (and same in monteCarlo), so triInv always receives lo<=mode<=hi even if the user drags the mode past the stored low/high.",
+        "aggregate() = 1-\u220f(1-p/100) is the correct independent-events union probability, and the slider/form 0-80 (baseline) and 0-95 (effectiveness) clamps keep it in [0,100] on the normal UI paths.",
+        "rerank() generalises to N risks (map derive over MODEL.risks, sort by composite with impact/likelihood tiebreakers, assign 1..n) and add/delete correctly call rerank+syncState+refreshAll; nextId() avoids id collisions with a linear scan.",
+        "monteCarlo() uses a deterministic seeded PRNG (seed 1337) so results are reproducible; residual prob rp = on ? b*(1-e/100) : b and Bernoulli firing are structurally sound; the marginal 'standalone' delta (aggBase - aggregate with only risk r residualised) correctly isolates one control's contribution.",
+        "Reset-to-the-5 (seedRisks) and startup init (line 1284-1285) rebuild sc from medians and re-run rerank/syncState cleanly, so a fresh/reset state is internally consistent; 'Reset params' (line 1272) is the one path that correctly rebuilds state from r.b/r.e.",
+        "pctl() and exceed() are correct (linear-interpolated percentile, threshold-count exceedance) and histChart bw=(hi-lo)/bins||1 guards the degenerate zero-range case."
+      ],
+      "summary": "The core scoring math is correct and generalises: derive/rerank's composite = ((tef+vuln)/2)*(0.6*primary+0.4*secondary), the BAND-sum loss, triInv, aggregate, and the seeded Monte Carlo all check out against the stored DATA, with sensible ordering guards and no div-by-zero in the normal paths. Two real correctness/honesty defects dominate: (1) editing a risk's baseline breach % silently does NOT flow into the probability model because syncState() preserves the pre-existing state[id] while compute/MC read only from state[] \u2014 so the 'model recomputed' toast is false for the whole breach/EAL/ROSI/MC stack after any edit (also affects import with colliding ids); and (2) the analytic 'Expected annual loss' uses severity multiplier 1.0 while the Monte Carlo it is shown next to draws severity from a triangular with mean 1.333, so the headline EAL sits ~33% below the mean of the tool's own loss distribution. Lesser issues: applySignal/manual-ingest and import lack lower-bound clamps (negative deltas / out-of-range imported b[] can push probabilities outside [0,100]), the LEC y-axis is hardcoded to 70% and clips, and every slider tick runs a fresh 6k-iteration MC."
+    }
+  },
+  {
+    "area": "safety",
+    "data": {
+      "area": "Escaping / injection / robustness \u2014 user text and pasted JSON flowing into innerHTML",
+      "defects": [
+        {
+          "what": "esc() does not escape quote characters, so every esc()'d value placed inside a double-quoted HTML attribute is a stored-XSS vector via event-handler injection.",
+          "where": "Definition at line 910: const esc=s=>...replace(/[&<>]/g,...) \u2014 only escapes & < >. Used in attribute context at line 1025 (Title: value=\"${esc(r.title)}\"), 1027-1029 textareas are element-content so fine, 1044-1045 (value=\"${esc(r.mit&&r.mit.owner...)}\"), and the edit-form built by riskForm().",
+          "repro": "Add/edit a risk and set Title to: \" onmouseover=\"alert(document.cookie) . Save, then Edit the risk again. renderRisks/riskForm emits value=\"\" onmouseover=\"alert(document.cookie)\". esc() leaves the double-quotes intact, breaking out of the value attribute and injecting a live onmouseover handler. Fires on hover. Same for Owner/SOC2 inputs.",
+          "severity": "critical",
+          "fix": "Make esc() also escape \" and ' (add '\"':'&quot;', \"'\":'&#39;' to the map). This single change closes every attribute-context hole at once, since esc() is already applied there."
+        },
+        {
+          "what": "r.id and r.tier from an imported / localStorage-loaded register are interpolated into innerHTML WITHOUT esc() in both attribute and text contexts, giving XSS from pasted 'Import register' JSON.",
+          "where": "Import path line 1278 spreads user JSON (...r) with no sanitization of id/tier. Render sites: line 1003 class=\"riskcard tier-${r.tier}\", 1004 <span class=\"rid\">${r.id}</span> plus ${r.tier}\u00b7${r.composite}, 1006 data-edit=\"${r.id}\" / data-del=\"${r.id}\", 1096 data-t=\"${r.id}\", 1097 data-b=\"${r.id}\" id=\"ob-${r.id}\", 1098 data-e / oe-${r.id}. None wrapped in esc().",
+          "repro": "Risks tab \u2192 Import register, paste: [{\"id\":\"<img src=x onerror=alert(1)>\",\"title\":\"t\",\"tier\":\"High\"}]. renderRisks writes the id straight into innerHTML: <span class=\"rid\"><img src=x onerror=alert(1)></span>. onerror fires immediately. Because save() persists to localStorage and load() (line 931) reassigns MODEL.risks verbatim, the payload also re-fires on every page reload.",
+          "severity": "critical",
+          "fix": "Wrap every ${r.id} and ${r.tier} in esc() at lines 1003-1006, 1096-1098 (and validate/whitelist tier to the known set). Ideally also sanitize id on import (line 1278) to an allowed charset since it is used as an HTML id and querySelector key."
+        },
+        {
+          "what": "The 'Ingest alert' JSON path stores sev, riskId, effect.field and effect.delta unescaped and renders them into innerHTML, so pasted signal JSON is a stored-XSS vector.",
+          "where": "Ingest at line 1189 stores o.sev, o.riskId, o.effect raw (only defaults applied). renderFeed line 1170 class=\"sig sev-${s.sev}\" (attr, no esc), line 1169+1172 fld/${s.effect.delta} rendered raw, line 1172 also prints s.riskId unescaped inside the ->\" span text.",
+          "repro": "Signals tab \u2192 paste into ingest box: {\"title\":\"x\",\"sev\":\"a\\\"><img src=x onerror=alert(1)>\",\"riskId\":\"R1\"}. renderFeed emits <div class=\"sig sev-a\"><img src=x onerror=alert(1)>\">, breaking the class attribute and executing. Also delta:\"<svg onload=...>\" reaches line 1172 unescaped via ${s.effect.delta}. Persisted via save(), so it re-fires on reload.",
+          "severity": "critical",
+          "fix": "esc() every signal field at render (s.sev in the class needs esc + ideally whitelist to low/med/high/critical; s.riskId, s.effect.field, s.effect.delta). Coerce effect.delta to Number on ingest at line 1189."
+        },
+        {
+          "what": "Toast messages are injected via innerHTML with user-controlled risk ids interpolated unescaped.",
+          "where": "toast() line 962 uses t.innerHTML=msg. Callers pass user data: line 1017 toast(`Deleted <span class=\"em\">${b.dataset.del}</span>`) where del is r.id, line 1187 toast(`Applied to <span class=\"em\">${r.id}</span> ...`). For an imported risk, r.id is attacker-controlled.",
+          "repro": "Import a risk with id \"<img src=x onerror=alert(1)>\", then Delete it (or apply a signal to it). The confirm dialog shows the raw id, and on confirm toast() sets innerHTML to the payload \u2192 executes. (b.dataset.del round-trips the raw id from the data-del attribute.)",
+          "severity": "major",
+          "fix": "Either change toast() to build text via textContent for the dynamic part, or esc() the interpolated ids in every toast() call. Given multiple callers embed intentional markup (e.g. <span class=\"em\">), the safest fix is esc() the id at each call site."
+        }
+      ],
+      "ok": [
+        "JSON.parse paths ARE guarded: load() (line 931), ingest (line 1189), and import register (line 1278) each wrap JSON.parse in try/catch and fail gracefully (return false / toast 'Invalid JSON' / 'Invalid register JSON'). Corrupt or old localStorage does not throw uncaught \u2014 load() catches and returns false, falling back to seed data.",
+        "The core risk-text fields shown on the Risks and Overview tabs (title, threat, asset, exposure, scenario, mit.primary, quick_wins, soc2, attack, coverage_gaps) ARE run through esc() in element-content contexts (lines 986-1013, 1018), so the standard <script>/<img> payloads in those element bodies are neutralized. The remaining holes are (a) attribute contexts where esc()'s missing quote-escaping bites, and (b) the id/tier/signal fields that skip esc() entirely.",
+        "save() (line 930) is try/caught, so a full or unavailable localStorage (e.g. private mode quota) won't throw.",
+        "import register defensively defaults sc/b/e (line 1278) and throws on non-array input, so malformed shapes degrade rather than crash the render."
+      ],
+      "summary": "Four confirmed injection defects, all stored-XSS. Root cause is twofold: (1) esc() at line 910 escapes only & < > and NOT quotes, so any esc()'d value inside a double-quoted attribute (risk title/owner/soc2 in the edit form) can break out via \\\" onX=... and fire an event handler; and (2) several user-controlled strings bypass esc() entirely on the innerHTML path \u2014 imported/localStorage risk id and tier (rendered raw into class/data attributes and span text at lines 1003-1006, 1096-1098), ingested signal sev/riskId/effect fields (lines 1169-1172), and risk ids interpolated into toast() innerHTML (lines 962, 1017, 1187). Both the 'Import register' and 'Ingest alert' paste boxes and the Add/Edit-risk form are reachable by a demo evaluator, and payloads persist via save()/load() so they re-fire on reload. On the honest side: all three JSON.parse call sites are properly try/caught with graceful fallback, corrupt/old localStorage is handled, and the main narrative text fields are correctly esc()'d in element-content contexts. The single highest-leverage fix is adding \\\" and ' to esc()'s replacement map, then wrapping the currently-unescaped id/tier/signal fields in esc()."
+    }
+  },
+  {
+    "area": "edge",
+    "data": {
+      "area": "Edge cases & empty states (tool.html \u2014 client-demo risk-prioritization tool)",
+      "defects": [
+        {
+          "what": "Export report throws and dies when the register is empty",
+          "where": "exportReport() line 1230-1234: `ranked[0].id` / `ranked[0].title` / `ranked[0].composite` with no guard for an empty MODEL.risks",
+          "repro": "Risks view \u2192 Delete all 5 risks (or Import `[]`). Go to Review \u2192 click 'Export report'. `ranked=[]`, so `ranked[0].id` throws `Cannot read properties of undefined (reading 'id')`. Verified in Node. Nothing downloads; the button is silently dead and an uncaught exception hits the console during a demo.",
+          "severity": "major",
+          "fix": "Guard at the top of exportReport(): `if(!MODEL.risks.length){toast('No risks to report');return;}` and/or emit a report with an empty ranking section."
+        },
+        {
+          "what": "Imported risks with string/garbage FAIR scores produce absurd composites and NaN that poison the whole readout",
+          "where": "import handler line 1278 sets `sc:r.sc||r.medians||{...}` without validating; derive() line 924-927 does raw arithmetic `(r.sc.tef+r.sc.vuln)/2` and `0.6*r.sc.primary+0.4*r.sc.secondary`",
+          "repro": "Import `[{\"id\":\"R1\",\"title\":\"x\",\"sc\":{\"tef\":\"4\",\"vuln\":\"4\",\"primary\":\"4\",\"secondary\":\"5\"}}]`. String concat: `(\"4\"+\"4\")/2 = 22`, composite `96.8`, tier 'Critical' (verified). Import `{\"tef\":null,...}` \u2192 composite NaN, tier defaults to 'Low', and NaN then flows into aggregate()/EAL/readout so P(breach), EAL, ROSI all render 'NaN%'/'$NaN'. The tool claims 'deterministic math verified to match the Python engine' but silently accepts and mis-renders junk.",
+          "severity": "major",
+          "fix": "In the import map, coerce and clamp each score: `tef:Math.max(1,Math.min(5,+s.tef||3))` etc.; skip/flag rows whose numeric fields don't parse, and toast how many were rejected."
+        },
+        {
+          "what": "Ingested/pasted alert with a string `delta` silently clamps or maxes the score instead of adding",
+          "where": "applySignal() lines 1180-1183 do `state[r.id].bMode+s.effect.delta` and `r.sc[f]+s.effect.delta`; ingest handler line 1189 passes `effect:o.effect` straight from JSON.parse with no numeric coercion",
+          "repro": "In Integrations paste `{\"source\":\"X\",\"title\":\"t\",\"riskId\":\"R1\",\"effect\":{\"field\":\"baseline\",\"delta\":\"6\"}}`, Add to feed, Apply. `15+\"6\"=\"156\"`, `Math.min(80,\"156\")` coerces to 80 \u2014 baseline jumps to the cap instead of +6 (verified). For field vuln/tef: `4+\"1\"=\"41\"`, `Math.min(5,\"41\")=5` \u2014 susceptibility jumps straight to the max. The change is logged to the human-review queue as '+6'/'+1', so the audit log lies about what actually happened to the model.",
+          "severity": "major",
+          "fix": "Coerce in applySignal: `const d=+s.effect.delta||0;` and use `d`; validate `effect.field` is one of baseline/tef/vuln on ingest, reject otherwise."
+        },
+        {
+          "what": "Clicking a risk whose `lens` exists but `medians` is missing crashes showAudit",
+          "where": "showAudit() lines 1082-1084: the `if(!r.lens)` guard falls through when lens is present, then `r.medians[fk]` is dereferenced unconditionally",
+          "repro": "Import `[{\"id\":\"R1\",\"lens\":{\"threat-intel\":{\"tef\":[4,\"x\"]}}}]` (lens present, no medians). Click the row in Overview or the bubble in Prioritize \u2192 `Cannot read properties of undefined (reading 'tef')` (verified). The register-array export/import round-trip is advertised, so a hand-edited or partial register that keeps lens but drops medians hard-crashes the audit panel.",
+          "severity": "minor",
+          "fix": "Guard: `const med=r.medians||{}; ...median ${med[fk]??'\u2014'}` and null-check `r.lens[lk]?.[fk]` per cell."
+        },
+        {
+          "what": "Adversarial-challenge panel is hardcoded to R3 and keeps claiming to 'attack the #1' even after R3 is deleted or is no longer ranked #1",
+          "where": "renderChallenge() lines 1087-1089 read the static `DATA.challenge` (top:'R3', verdicts) with no reference to the live ranking",
+          "repro": "Delete R3 (or add a risk that outranks it, or edit scores so a different risk is #1). Prioritize tab still shows 'Two skeptics attack the #1 (R3)' and R3's verbatim rationale, even though R3 isn't in the register / isn't #1. This directly undercuts the tool's central honesty pitch ('recomputes around your edits', 'not a fixed list').",
+          "severity": "major",
+          "fix": "Either recompute/derive the challenge subject from the current top-ranked risk, or gate the panel: only show it when the live #1 id === DATA.challenge.top, otherwise show 'Adversarial challenge available for the pipeline's original #1 (R3); re-run to challenge your current ranking.'"
+        },
+        {
+          "what": "Appetite threshold accepts values that break parsing or fall outside the chart, degrading silently",
+          "where": "parseNum() line 1268 `+String(s).replace(/[^0-9.]/g,\"\")||0`; LEC vertical appetite line only drawn when thr in [100k,5M] (line 1116)",
+          "repro": "Type `1.2.3` (or paste `$2.000.000` European style) into 'Appetite: loss over\u2026' \u2192 `parseNum` yields `+\"1.2.3\"` = NaN \u2192 `||0` \u2192 appetite.thr becomes 0, field snaps to '$0', and every year now exceeds $0 so the readout tag flips to 'over 0%' with no explanation. Set appetite to a huge number like 999,999,999 and the appetite line silently disappears from the loss-exceedance curve (out of the 100k\u20135M range) with no indication it was applied.",
+          "severity": "minor",
+          "fix": "Reject non-numeric/multi-dot input (keep previous value + toast), and either clamp the appetite threshold to the chart domain or annotate 'appetite beyond chart range' when it falls outside [100k,5M]."
+        },
+        {
+          "what": "Duplicate risk ids (from import) collapse state and make delete remove all copies",
+          "where": "import line 1278 does not dedupe ids; syncState() line 929 and state are keyed by `r.id`; delete filter line 1017 removes every risk matching the id",
+          "repro": "Import `[{\"id\":\"R1\",\"b\":[10,15,20]},{\"id\":\"R1\",\"b\":[50,60,70]}]`. Both share one `state[\"R1\"]` entry (second wins), so the first risk's sliders silently drive the second's state (verified). Deleting one 'R1' deletes both. nextId() would also hand out a colliding id later. The register looks fine but is quietly corrupt.",
+          "severity": "minor",
+          "fix": "On import, drop or rename duplicate ids (e.g. append a suffix) and toast the collision; key runtime state by a stable unique key rather than the user-editable id."
+        }
+      ],
+      "ok": [
+        "Deleting all risks does NOT crash the primary surfaces: renderOverview() (line 983), aggregate([]) (returns 0), margChart Math.max(10,...[]) , renderReadout's monteCarlo(6000) with 0 risks, and the empty-feed/empty-controls states all handle the empty register gracefully. Overview shows a proper empty-state card. (Only Export report \u2014 reported above \u2014 breaks.)",
+        "Form-added risks are safe from NaN injection: the four FAIR fields are <select> elements constrained to 1\u20135, and baseline/effectiveness inputs are clamped `Math.max(0,Math.min(80,+g('bmode')||0))` / `Math.min(95,...)` (line 1049), so blank fields become 0 and 0-baseline / 100-effectiveness attempts are clamped without throwing. The injection vector is Import/ingest JSON, not the form.",
+        "Signals whose riskId isn't in the register are handled: renderFeed() shows a 'no <id> in register' chip and hides Apply (line 1173), and applySignal() re-checks and toasts 'No matching risk' (line 1178) rather than throwing.",
+        "Connect\u2192pull\u2192disconnect mid-feed is safe: disconnecting only deletes the connector flag (line 1158); already-pulled signals remain in the feed and stay applyable/dismissable. pullSignals dedupes by connector+title so re-pulling doesn't duplicate.",
+        "triInv() guards the degenerate 0-baseline / equal-bounds case with `if(b<=a)return a` (line 918), and compute() re-derives bLo/bHi via Math.min/Math.max so an inverted low/high from state can't invert the triangular sampler.",
+        "esc() (line 910) escapes &,<,> on all user-entered text before innerHTML, so very long text or an XSS-style title/threat is escaped (it degrades layout only, not a script-injection or throw)."
+      ],
+      "summary": "The form-driven paths are well-guarded (selects + clamped inputs) and the empty-register state is handled on every major surface except one. But the JSON entry points \u2014 Import register, ingest alert, and paste-JSON signals \u2014 perform zero type validation, so string/NaN numbers flow straight into the 'deterministic, verified' math and produce absurd composites, NaN-poisoned readouts, or silent max-clamping that even mis-logs itself to the human-review queue. Two hard crashes exist: Export report with an empty register, and clicking a risk that has `lens` but no `medians`. The most damaging honesty defect is the adversarial-challenge panel, which is hardcoded to R3 and keeps claiming to 'attack the current #1' after R3 is deleted or demoted \u2014 directly contradicting the tool's core 'it recomputes around your edits' pitch. Seven defects total: 4 major, 3 minor. Fixes are all small (coerce/clamp on the three import paths, two null-guards, and gate the challenge panel on the live ranking)."
+    }
+  },
+  {
+    "area": "product",
+    "data": {
+      "area": "Product completeness vs the brief \u2014 review console, integrations, honesty of UI claims (tool.html)",
+      "defects": [
+        {
+          "what": "Scorecard claim '45 \u2192 2 human-review flags: raised \u2192 still genuinely open' is not backed by any behaviour. The review queue initializes ALL 45 flags as status 'open' (reviewState starts empty; reviewStatus() defaults to 'open'), so the queue sub-header shows '45 open', and the nav Review badge shows 45. The hardcoded '2' in the build scorecard directly contradicts what the queue and badge display. Even the 13 flags marked 'fixed in build' still render as open with Accept/Dismiss buttons and count toward the open total, so the number can never be 2 without the user manually accepting 43 items.",
+          "where": "renderBuild() line 1226 (`EXTRA.flags.length+\" \u2192 2\"` labelled 'raised \u2192 still genuinely open') vs renderQueue() lines 1196-1199 (open = flags with reviewStatus 'open' = 45 initially) and initReview() line 1193.",
+          "repro": "Open tool \u2192 Review tab \u2192 'Review queue' shows '45 open \u00b7 45 total' and the nav badge shows 45. Switch to 'How it's built' \u2192 scorecard tile reads '45 \u2192 2 \u2026 still genuinely open'. The two screens contradict each other on the same load.",
+          "severity": "major",
+          "fix": "Either pre-seed reviewState so the 43 non-open flags load as accepted/dismissed/fixed (making the queue actually show 2 open), or change the scorecard tile to reflect the real data, e.g. compute open = reviewItems.filter(reviewStatus==='open').length and 'fixed' from EXTRA.flags.filter(f=>f.fixed).length, and stop hardcoding '2'."
+        },
+        {
+          "what": "The adversarial-challenge summary contradicts its own detail cards and the review flag. DATA.challenge.contested=false, so renderChallenge prints 'Verdict: stands \u2014 surfaced for a human, not auto-resolved.' But verdict[0] is 'refuted' with alt R1 (rendered as a card 'Likelihood angle \u00b7 refuted \u2192 R1 \u00b7 medium conf.'), and the review queue contains a flag literally reading 'A challenger refuted the #1 ranking (alternative: R1)'. So the headline says the #1 stands / is not contested while a challenger on the same panel refutes it and proposes a different #1. Given the tour explicitly pitches the tool as 'honest enough to correct itself', a sharp evaluator will read this as the tool hiding a refutation behind a 'stands' banner.",
+          "where": "renderChallenge() line 1088 (`${c.contested?'contested':'stands'}`) with DATA.challenge = {contested:false, verdicts:[{verdict:'refuted',alt:'R1'},{verdict:'upheld'}]}.",
+          "repro": "Prioritize tab \u2192 'Adversarial challenge of the #1 ranking': top line says 'Verdict: stands', left card says 'refuted \u2192 R1', and Review \u2192 queue shows the matching 'refuted the #1 ranking (alternative: R1)' flag.",
+          "severity": "major",
+          "fix": "Derive contested from the verdicts (contested = verdicts.some(v=>v.verdict==='refuted')) instead of the standalone flag, or relabel to something honest like 'stands with a dissent' and surface that one challenger proposed R1 as the alternative #1."
+        },
+        {
+          "what": "Task numbering is incomplete/inconsistent: view eyebrows read 'Task 1 \u2014 the register', 'Task 2 \u2014 the auditable framework', 'Task 4 \u2014 the live model'. There is no Task 3 anywhere in the UI (grep confirms only Task 1/2/4). If the assessment brief has a Task 3 (e.g. mitigation design, which is present as data but never labelled as a task), the tool silently drops the label and an evaluator checking task coverage will read it as a missing deliverable; if the labels are just cosmetic, the gap still looks like an oversight.",
+          "where": "Section eyebrows at lines 245 ('Task 2'), 256 ('Task 4'), 237 ('Task 1'); tour steps lines 1253-1255. No 'Task 3' occurrence in the file.",
+          "repro": "Read the eyebrow labels across Risks/Prioritize/Model \u2014 they jump 1 \u2192 2 \u2192 4.",
+          "severity": "minor",
+          "fix": "Add the Task 3 label to whichever view covers it (mitigation/feasibility content lives on the Risk cards and Prioritize challenge), or renumber so the sequence is contiguous and matches the brief's task list."
+        },
+        {
+          "what": "The live top readout strip runs a fresh 6,000-iteration Monte Carlo on every render whenever lastMC is null, and liveUpdate() sets lastMC=null on every slider input. Dragging any baseline/effectiveness slider therefore triggers renderReadout() \u2192 monteCarlo(6000) synchronously on each 'oninput' event (~120k+ RNG/triInv ops per pixel of drag), on top of re-rendering three SVG charts. The tool still works but slider dragging is needlessly janky, undercutting the 'recomputes in real time' claim.",
+          "where": "liveUpdate() line 1127 (called from box.oninput line 1100 which first sets lastMC=null) \u2192 renderReadout() line 976 (`lastMC?\u2026:exceed(monteCarlo(6000).residLoss,\u2026)`).",
+          "repro": "Model tab \u2192 drag any baseline slider back and forth; each move re-runs a 6k-path Monte Carlo for the appetite readout even though the LEC/hist panels are cleared.",
+          "severity": "minor",
+          "fix": "Cache or debounce the appetite-probability estimate (e.g. only recompute the 6k MC on slider 'change', or reuse a cached residLoss and interpolate), so continuous dragging doesn't re-simulate every frame."
+        },
+        {
+          "what": "The loss-exceedance chart has a hardcoded y-axis ceiling of 70% with no auto-scaling or clamping; any exceedance value above 70% is plotted above the top gridline and effectively clipped/misdrawn. At default parameters the baseline curve peaks at ~66.5% (just under the cap), but the baseline sliders reach 80% and users can add risks, so raising baselines or adding a high-likelihood risk pushes the baseline curve past 70% and it silently renders off the top of the panel.",
+          "where": "lecChart() line 1112 `y=p=>m.t+(1-p/70)*(H-m.t-m.b)` \u2014 no clamp of p to [0,70] and no dynamic max.",
+          "repro": "Model tab \u2192 run Monte Carlo, then raise a couple of baseline sliders toward 80% and re-run: the 'now' (baseline) curve's low-threshold points exceed 70% and draw above the chart's top gridline.",
+          "severity": "minor",
+          "fix": "Compute the y-axis max from the data (e.g. max exceedance rounded up) or clamp p into range and note when clamped, so the baseline curve always stays inside the plot."
+        }
+      ],
+      "ok": [
+        "Register CRUD is genuinely wired: + Add / Edit / Delete / Import JSON / Export / Reset all mutate MODEL.risks and call rerank()+syncState()+refreshAll(), and the ranking, matrix, model, ROI and Monte Carlo recompute \u2014 the 'working register, not a fixed list' claim holds.",
+        "Integrations are wired end-to-end as claimed: Connect pulls seeded signals (pullSignals), Apply mutates the mapped risk's baseline/score and re-ranks (applySignal), writes a human-review item (addReview), and the banner's honesty caveat ('Demo connectors \u2026 simulated \u2026 documented fetchSignals adapter point') is accurate. Paste-JSON ingest (ingestBtn) works and its alerts are Appliable when they include a matching riskId+effect.",
+        "The Review console genuinely exposes the plumbing: Agent log (45 rows, matches EXTRA.log.length and the run totals 24+7+7+7), per-run filter buttons, 10 real prompt templates with 'View full' modals, the actual JSON Schemas, and the pipeline/rounds build view \u2014 all populate from real EXTRA data.",
+        "Review queue is actually usable: Accept / Dismiss / Reopen mutate reviewState, persist to localStorage, update the open counter and nav badge; Export report writes a real Markdown file including open review items and the live ranking.",
+        "Honesty claims about provenance are backed by real files on disk: workflow/advanced_analytics.py, outputs/08_advanced_analytics.json, and the prompts/ and schemas/ referenced in the footer all exist; the in-browser derive()/compute() reproduce DATA composites and losses (R3: L4\u00d7I4.4=17.6, loss 4.25M) consistent with the shipped numbers.",
+        "showAudit() correctly degrades for user-added risks with no lens ('Manually added \u2014 user-entered scores, no multi-agent scoring'), so imported/added risks don't break the audit-trail panel.",
+        "Monte Carlo is seeded (fixed 1337 RNG) so the 'reproducible / byte-identical replay' claim is defensible; persistence via localStorage genuinely round-trips risks/state/signals/connectors/reviewState/appetite on load()."
+      ],
+      "summary": "The tool is largely product-complete and honest: register CRUD, SIEM connectors, signal-apply, and the review console (agent log, prompts, schemas, accept/dismiss/export) are all genuinely wired to behaviour, and provenance claims are backed by real files. Two material honesty defects undercut the 'stays honest / corrects itself' pitch: (1) the build scorecard hardcodes '45 \u2192 2 flags still genuinely open' while the queue and nav badge actually show 45 open on load \u2014 the '2' is backed by nothing; and (2) the adversarial-challenge panel prints 'Verdict: stands' while one challenger on the same screen (and a queue flag) refutes the #1 and proposes R1, because 'contested' is a standalone false flag rather than derived from the verdicts. Plus a genuine missing 'Task 3' label (views jump 1\u21922\u21924), a Monte-Carlo-per-slider-frame performance drag, and an un-clamped 70% LEC y-axis that clips when baselines are raised. No fabricated buttons or dead tabs otherwise."
+    }
+  },
+  {
+    "area": "honesty",
+    "data": {
+      "area": "Honesty & defensibility review of tool.html (Meridian Desk \u2014 Agentic Risk Prioritization). Lens: is the simulation clearly labelled, are the headline numbers internally consistent, does UI copy overclaim, and is applying a SIEM signal traceable for human review.",
+      "defects": [
+        {
+          "what": "The Build scorecard headline 'human-review flags: raised -> still genuinely open' renders as '45 -> 2', but the Review > Queue tab seeds ALL 45 flags as status 'open' (reviewState starts empty; reviewStatus() defaults to 'open'). So the Queue header computes and displays '45 open - 45 total', directly contradicting the scorecard's claim that only 2 remain open. The 13 flags marked fixed:true are still rendered as actionable 'open' items with Accept/Dismiss buttons and only get a cosmetic 'fixed in build' chip; their status is never set to accepted/resolved.",
+          "where": "Line 1226 (renderBuild scorecard: [EXTRA.flags.length+\" -> 2\", \"human-review flags: raised -> still genuinely open\"]) vs lines 1195-1198 (reviewStatus default 'open', open counter) and line 1200-1203 (fixed flags rendered as open). reviewState initialized empty at line 922.",
+          "repro": "Open the tool fresh (clear localStorage). Go to Review > Build: scorecard shows '45 -> 2' claiming 2 still genuinely open. Go to Review > Queue: header reads '45 open - 45 total' with 45 actionable items, 13 of which are already 'fixed in build' yet still show Accept/Dismiss. A sharp evaluator sees the tool contradict its own honesty headline.",
+          "severity": "major",
+          "fix": "Seed reviewState so the 13 fixed:true flags (and any already-resolved ones) load as 'accepted'/'dismissed' in initReview(), so the live open count matches the '2 genuinely open' claim; OR change the scorecard to compute the number live (open = reviewItems.filter(open).length) instead of hardcoding '-> 2'. The two counts must agree."
+        },
+        {
+          "what": "The top readout label 'Appetite (>$2M)' is hardcoded in static HTML and never updated, while the appetite threshold is user-editable (#ap-thr, default $2,000,000). If the user changes the threshold, the readout keeps saying '>$2M' while the adjacent percentage and the within/over verdict are computed against the new threshold (appetite.thr). The label then misrepresents the number actually being used.",
+          "where": "Line 221 (static '<span class=\"l\">Appetite (&gt;$2M)</span>') vs line 976-977 (renderReadout computes pe = exceed(...residLoss, appetite.thr) and the within/over tag) and line 1269 ($('#ap-thr').onchange updates appetite.thr but not the label).",
+          "repro": "In Model, set 'Appetite: loss over' to $5,000,000. The top bar still reads 'Appetite (>$2M)', but the percentage next to it is now P(loss > $5M) and the within/over verdict uses $5M. Label and computed value disagree.",
+          "severity": "minor",
+          "fix": "Give the label an id and update it in renderReadout/liveUpdate to reflect appetite.thr (e.g. `Appetite (>` + fmtUSD(appetite.thr) + `)`), or remove the specific dollar figure from the static label."
+        },
+        {
+          "what": "Agent-count claims are internally inconsistent. The Build tab prose describes the hardening rounds as 'Deep research (7 agents)', 'Hostile critique (4 + 2)' and 'Full audit (6 verifiers)' = 7+6+6 = 19 hardening agents, but the EXTRA.log the tool ships and displays contains exactly 7 Research + 7 Critique + 7 Audit = 21 hardening invocations (plus 24 Pipeline = 45 total). So the round descriptions (6 and 6) undercount the tool's own log (7 and 7). The headline '45 agent invocations across 4 runs' and 'the run + 3 hardening passes' are consistent with the log, but the per-round breakdown is not.",
+          "where": "Line 1228 (renderBuild rounds: 'Hostile critique (4 + 2)' and 'Full audit (6 verifiers)') vs EXTRA.log run distribution (Pipeline 24, Research 7, Critique 7, Audit 7 = 45), and line 292/1226 which correctly state 45 across 4 runs.",
+          "repro": "Review > Build: read the three-round card (7 + 6 + 6 = 19 hardening agents). Review > Log: filter by run \u2014 Critique shows 7 entries, Audit shows 7 entries, not 6 and 6. The numbers a reviewer can count in the log don't match the prose.",
+          "severity": "minor",
+          "fix": "Make the round descriptions match the shipped log: 'Hostile critique (7 agents)' and 'Full audit (7 verifiers)', or adjust the log to match the prose. Pick one source of truth."
+        },
+        {
+          "what": "Overclaim in the Overview intro: 'three more adversarial passes audited the work.' Of the three hardening runs, only Critique and Audit are adversarial; the first ('Deep research (7 agents)') is parameter verification/web-research, not an adversarial pass. Calling all three 'adversarial passes' slightly overstates the adversarial rigor.",
+          "where": "Line 228 ('three more adversarial passes audited the work') vs line 1228 which describes round 1 as 'Deep research' (web-verification), not adversarial.",
+          "repro": "Read the Overview lead, then Review > Build rounds. Round 1 is deep research/verification, not an adversarial critique, so 'three adversarial passes' is one more than the tool's own description supports.",
+          "severity": "cosmetic",
+          "fix": "Reword to 'three more verification/adversarial passes' or 'a research pass plus two adversarial passes.'"
+        }
+      ],
+      "ok": [
+        "Headline quant numbers tie out exactly to deterministic code: with the shipped defaults the model computes aggBase 56.7% -> aggResid 20.5% and ROSI 317% (verified by re-implementing compute() in Python against the DATA b/e/loss/cash/pw values and LABOR=3000). The deliverable's 56.7% -> 20.5% and ROSI 317% are honest and reproducible.",
+        "The Integrations page is honestly labelled: the banner (line 278) states plainly 'Demo connectors. Telemetry here is simulated for the assessment' and describes fetchSignals() as a documented stub adapter to wire to real Sentinel/Defender/Entra/GitHub APIs. It does not claim a live SIEM connection. The outbound Jira/Slack connectors show only a passive 'ready' chip and perform no action, with no copy claiming real push.",
+        "Applying a SIEM signal IS traceable for human review: applySignal() (line 1186) calls addReview(...) which inserts an item into the Review queue reading 'Applied SIEM signal ... Review whether this telemetry-driven change to the register is warranted.' This backs the banner/feed copy ('writes to the human-review log' / 'logs it for human review'). Note logLocal() at line 1238 is a no-op stub, but no UI copy promises a separate action log beyond the review queue, so this is not a broken promise.",
+        "The 'median of 3 blind AI scorers' claim is honest: for every risk and every FAIR factor, the stated DATA.medians equal the true statistical median of the three lens scores in r.lens (verified by parsing DATA and comparing). The audit trail (showAudit) correctly displays each lens score alongside 'median X'.",
+        "The 'all numbers computed by deterministic code, 0 computed by a model' claim is defensible: the live math (derive, compute, monteCarlo) is deterministic JS; derive()'s BAND-based r.loss reproduces the DATA loss values exactly, and the Monte Carlo is seeded (s=1337) so it is genuinely reproducible in-browser. Model-authored content (scores, prompts, dollar bands) is openly disclosed as pipeline output, not passed off as live computation.",
+        "The '45 agent invocations across 4 runs' headline and the '45' scorecard tile are consistent with the shipped EXTRA.log, which contains exactly 45 entries distributed as Pipeline 24, Research 7, Critique 7, Audit 7 across 4 distinct runs; the '24 agents, 6 phases' pipeline card also sums correctly (1+3+2+10+7+1 = 24)."
+      ],
+      "summary": "Core defensibility holds: the flagship numbers (56.7% -> 20.5%, ROSI 317%) reproduce exactly from deterministic code, the median-of-3-scorers claim is verifiably true, the connectors are clearly labelled as simulated, and applying a SIEM signal is logged to the human-review queue for traceability. The one MAJOR honesty defect is a self-contradiction on open review flags: the Build scorecard headlines '45 -> 2 still genuinely open' while the Queue tab loads all 45 flags as 'open' (13 fixed-in-build items still shown as actionable), so the tool contradicts its own honesty metric on screen. Secondary: a hardcoded 'Appetite (>$2M)' readout label goes stale when the user changes the threshold, and the per-round agent counts in the Build prose (6+6) undercount the shipped log (7+7). No overclaiming of a live SIEM."
+    }
+  }
+]

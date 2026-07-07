@@ -15,6 +15,12 @@
 >
 > Numbers are the research-calibrated **v1.1** model; every one is computed by deterministic code and traces to a cited source or a labeled expert-judgment flag.
 
+**▶ Run the live tool:** `node serve.mjs` then open **http://localhost:8900** — a full interactive product ([tool.html](tool.html)), not a static page. Anyone can test it end to end:
+- **Live model** — drag baseline/effectiveness sliders, toggle mitigations, set your own risk appetite, run a 20k in-browser Monte Carlo. The math is a faithful port of `workflow/advanced_analytics.py`, verified to match `outputs/08` exactly, and it generalizes to any number of risks.
+- **Add / edit / import risks** — the register is editable; the ranking, matrix, ROI and Monte Carlo all recompute around your changes. Export the register or a report.
+- **Integrations** — connect simulated Sentinel / Defender / Entra / GitHub / Tenable connectors (clearly labelled demo stubs with a documented `fetchSignals()` adapter point); pull signals and **Apply** them to push telemetry straight into a risk's baseline. Or paste a real alert JSON.
+- **Review console** — every one of the **45 agent invocations** across all four runs (with prompt + result previews), the exact **prompts** and **schemas**, and a **working review queue** (accept/dismiss each flag). Edits persist in `localStorage`. Built-in guided tour. Needs Node ≥ 18; makes no network calls.
+
 **What this is:** a working multi-agent pipeline (not a single prompt) that takes a 5-risk register through validation → 3-lens scoring → adversarial challenge → mitigation + feasibility review → quantitative breach-likelihood modeling → synthesis. **24 agents** in the executed run; every agent returns schema-validated JSON; **all arithmetic is done by deterministic code, never by a model**. The pipeline was actually executed — the outputs in [outputs/](outputs/) are its real artifacts, and [workflow/risk_pipeline.workflow.js](workflow/risk_pipeline.workflow.js) is the exact script that ran. A second **7-agent research pass (6 web verifiers + 1 assessor)** then AI-researched every parameter against current primary sources (human click-through recommended; one parameter with no literature stays labeled expert judgment) and adversarially assessed this deliverable itself ([SOURCES.md](SOURCES.md)); a third pass ran four hostile feature critics whose fixes are folded in ([outputs/10_critique_and_actionplan.json](outputs/10_critique_and_actionplan.json)).
 
 ### Pipeline reliability scorecard
@@ -38,6 +44,8 @@ repo layout
 ├── SOURCES.md                    ← research-verified citations + the v1.1 recalibration
 ├── HUMAN_REVIEW_FLAGS.md         ← auto-generated: where NOT to trust the AI (+ post-research status)
 ├── ROADMAP.md                    ← sequencing waves, KRIs, MITRE ATT&CK + SOC 2 evidence matrix
+├── tool.html                     ← **interactive live tool** — in-browser model, sliders, Monte Carlo, guided tour
+├── serve.mjs                     ← local launcher: `node serve.mjs` → http://localhost:8900
 ├── dashboard.html                ← self-contained results dashboard (artifact fragment; see provenance note inside)
 ├── workflow/
 │   ├── risk_pipeline.workflow.js ← the executed orchestration script (the plumbing, untouched)
