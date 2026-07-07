@@ -4,6 +4,7 @@ Operational layer on top of the assessment: what to do in what order (consolidat
 
 ## Sequencing — one plan from five feasibility reviews
 
+The feasibility agents each produced a `sequencing_note`; consolidated, they agree on three waves. Effort assumes the 3-person IT team plus borrowed engineering, with SOC 2 prep already consuming ~20% of IT capacity — which is why calendar time ≫ person-weeks.
 
 ```mermaid
 gantt
